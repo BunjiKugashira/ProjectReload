@@ -22,7 +22,7 @@ public abstract class Event {
 	}
 	
 	/*
-	 * TODO comment
+	 *  TODO comment
 	 */
 	public static final synchronized boolean registerReaction(String pKey, Reaction pReact) {
 		assert(pKey != null);
