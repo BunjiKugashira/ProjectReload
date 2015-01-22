@@ -10,13 +10,21 @@ import java.util.Hashtable;
  *
  */
 public abstract class Event {
+	private static Hashtable<String, Reaction> reactionsPre = new Hashtable<String, Reaction>();
 	private static Hashtable<String, Reaction> reactions = new Hashtable<String, Reaction>();
+	private static Hashtable<String, Reaction> reactionsPost = new Hashtable<String, Reaction>();
 	
 	/*
 	 * TODO comment
 	 */
 	public Event(Object... pArgs) {
+		for(Reaction r : reactionsPre.values()) {
+			r.react(pArgs);
+		}
 		for(Reaction r : reactions.values()) {
+			r.react(pArgs);
+		}
+		for(Reaction r : reactionsPost.values()) {
 			r.react(pArgs);
 		}
 	}
@@ -24,17 +32,46 @@ public abstract class Event {
 	/*
 	 *  TODO comment
 	 */
-	public static final synchronized boolean registerReaction(String pKey, Reaction pReact) {
+	public static final synchronized boolean registerReaction(String pKey, Reaction pReact, int pOrder) {
 		assert(pKey != null);
 		assert(pReact != null);
+		assert(pOrder == -1 || pOrder == 0 || pOrder == 1);
 		
-		if (reactions.containsKey(pKey)) {
-			return false;
+		switch (pOrder) {
+		case -1:
+			if (reactionsPre.containsKey(pKey)) {
+				return false;
+			}
+			else {
+				reactionsPre.put(pKey, pReact);
+				return true;
+			}
+		case 0:
+			if (reactions.containsKey(pKey)) {
+				return false;
+			}
+			else {
+				reactions.put(pKey, pReact);
+				return true;
+			}
+		case 1:
+			if (reactionsPost.containsKey(pKey)) {
+				return false;
+			}
+			else {
+				reactionsPost.put(pKey, pReact);
+				return true;
+			}
+		default:
+			return false; // Doesn't happen.
 		}
-		else {
-			reactions.put(pKey, pReact);
-			return true;
-		}
+	}
+	
+	/*
+	 * TODO comment
+	 */
+	public static final synchronized boolean registerReaction(String pKey, Reaction pReact) {
+		return registerReaction(pKey, pReact, 0);
 	}
 	
 	/*
