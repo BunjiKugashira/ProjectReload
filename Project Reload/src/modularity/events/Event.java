@@ -111,6 +111,8 @@ public abstract class Event {
 		reactionsPost.remove(pKey);
 	}
 
+	private boolean _isAlive;
+
 	/**
 	 * This timer determines how long the event will minimum wait for a reaction
 	 * to finish.
@@ -127,14 +129,15 @@ public abstract class Event {
 	 * Constructor of the class Event. MUST be called if the constructor is
 	 * overwritten!
 	 *
-	 * Requires _joinTimer to be positive. This value must be positive. A value of 0 can
-	 * result in an infinite waiting-time. If the reactions don't finish in time
-	 * a new ErrorEvent is created. If the constructor isn't overwritten the
-	 * default-value fulfills this criteria.
+	 * Requires _joinTimer to be positive. This value must be positive. A value
+	 * of 0 can result in an infinite waiting-time. If the reactions don't
+	 * finish in time a new ErrorEvent is created. If the constructor isn't
+	 * overwritten the default-value fulfills this criteria.
 	 */
 	public Event() {
 		assert (_joinTimer >= 0);
 
+		_isAlive = true;
 		_timeStamp = Instant.now();
 		_queue = new ConcurrentLinkedQueue<Thread>();
 		final Event ev = this;
@@ -158,6 +161,14 @@ public abstract class Event {
 	}
 
 	/**
+	 * Kills the event. The current stage will still be completed. All following
+	 * stages won't be executed.
+	 */
+	public final void kill() {
+		_isAlive = false;
+	}
+
+	/**
 	 * Starts the event.
 	 */
 	public final void run() {
@@ -178,6 +189,10 @@ public abstract class Event {
 	 */
 	private void startReaction(final Hashtable<String, Reaction> pRea,
 			final Event pThis) {
+		// Check if the Event is still alive. If not there's nothing to do here.
+		if (!_isAlive) {
+			return;
+		}
 		// Setup threads for the reactions
 		for (final Reaction r : pRea.values()) {
 			final Thread thr = new Thread() {
