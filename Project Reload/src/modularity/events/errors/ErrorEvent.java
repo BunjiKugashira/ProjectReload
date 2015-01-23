@@ -12,8 +12,11 @@ import modularity.events.Event;
 public abstract class ErrorEvent extends Event {
 	private final Exception _exc;
 
-	/*
-	 * TODO
+	/**
+	 * Instantiates a new error event. TODO comment
+	 *
+	 * @param pExc
+	 *            the exc
 	 */
 	public ErrorEvent(final Exception pExc) {
 		super();

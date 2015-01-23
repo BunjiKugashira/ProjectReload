@@ -1,0 +1,23 @@
+Ok, why use assertions? Because we want the program to crash exactly when a bad call is being made.
+If the program crashes after the remaining data was corrupted we have a way bigger problem.
+
+How to assert?
+assert (pParameter.meetsRequirement());
+Example: a method is expecting a distance as an integer. This distance has to be a positive value, obviously.
+public void expectDistance(int pDist) {
+	assert (pDist >= 0);
+}
+Example: you are expecting a certain object and run a method on it. It would be bad if this object was null.
+The pParam != null check will probably the most used assertion in the whole code!
+public void expectObj(Obj pObj) {
+	assert (pObj != null);
+}
+
+When to assert?
+If your method has parameters and expects them to be something (or be something not) you assert.
+If your method uses a field and expects that to be something (or be something not) you also assert.
+For examples s. How to assert.
+
+Where to assert?
+Assertions should be the first thing to do in any method containing them.
+Leave a blank line after the assertions to show that asserting is done and your code starts from there.

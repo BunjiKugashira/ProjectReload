@@ -23,38 +23,44 @@ public abstract class Event {
 	private static final Hashtable<String, Reaction> reactionsPost = new Hashtable<String, Reaction>();
 	private static final Hashtable<String, Reaction> reactionsPre = new Hashtable<String, Reaction>();
 
-	/*
-	 * TODO comment
+	/**
+	 * Register reaction. TODO comment
 	 *
-	 * @see modularity.Event#registerReaction(String pKey, Reaction pReact, int
-	 * pOrder)
+	 * @param pKey
+	 *            the key
+	 * @param pReact
+	 *            the react
+	 * @return true, if successful
 	 */
 	public static final synchronized boolean registerReaction(
 			final String pKey, final Reaction pReact) {
 		return registerReaction(pKey, pReact, 0);
 	}
 
-	/*
+	/**
 	 * Registers a reaction that will be executed once this event occurs. If the
 	 * key is already used it will not be registered.
 	 *
-	 * @require pKey != null
+	 * Requires pKey != null.
 	 *
-	 * @require pReact != null
+	 * Requires pReact != null.
 	 *
-	 * @require pOrder == -1 || pOrder == 0 || pOrder == 1
+	 * Requires pOrder == -1 || pOrder == 0 || pOrder == 1.
 	 *
-	 * @param pKey a string-identifier for the reaction. Must be unique from all
-	 * other registered reactions.
+	 * @param pKey
+	 *            a string-identifier for the reaction. Must be unique from all
+	 *            other registered reactions.
 	 *
-	 * @param pReact a reaction that is executed once this event occurs
+	 * @param pReact
+	 *            a reaction that is executed once this event occurs
 	 *
-	 * @param pOrder if -1 then the reaction is executed before normal
-	 * reactions, if 0 it is executed normally and if 1 it is executed after
-	 * normal reactions.
+	 * @param pOrder
+	 *            if -1 then the reaction is executed before normal reactions,
+	 *            if 0 it is executed normally and if 1 it is executed after
+	 *            normal reactions.
 	 *
 	 * @return true if the key was unique and the reaction was sucessfully
-	 * registered. else false.
+	 *         registered. else false.
 	 */
 	public static final synchronized boolean registerReaction(
 			final String pKey, final Reaction pReact, final int pOrder) {
@@ -89,12 +95,13 @@ public abstract class Event {
 		}
 	}
 
-	/*
+	/**
 	 * Removes a reaction from this event.
-	 * 
-	 * @assert pKey != null
-	 * 
-	 * @param pKey the key of the reaction that should be removed
+	 *
+	 * Requires pKey != null.
+	 *
+	 * @param pKey
+	 *            the key of the reaction that should be removed
 	 */
 	public static final synchronized void removeReaction(final String pKey) {
 		assert (pKey != null);
@@ -104,6 +111,10 @@ public abstract class Event {
 		reactionsPost.remove(pKey);
 	}
 
+	/**
+	 * This timer determines how long the event will minimum wait for a reaction
+	 * to finish.
+	 */
 	protected int _joinTimer = 100;
 
 	private final Thread _operatingThread;
@@ -112,11 +123,11 @@ public abstract class Event {
 
 	private final Instant _timeStamp;
 
-	/*
+	/**
 	 * Constructor of the class Event. MUST be called if the constructor is
 	 * overwritten!
 	 *
-	 * @Require _joinTimer >= 0 This value must be positive. A value of 0 can
+	 * Requires _joinTimer to be positive. This value must be positive. A value of 0 can
 	 * result in an infinite waiting-time. If the reactions don't finish in time
 	 * a new ErrorEvent is created. If the constructor isn't overwritten the
 	 * default-value fulfills this criteria.
@@ -137,31 +148,33 @@ public abstract class Event {
 		};
 	}
 
-	/*
+	/**
 	 * Returns the instant this event was fired.
-	 * 
+	 *
 	 * @return the instant this event was fired.
 	 */
 	public final Instant getTimeFired() {
 		return _timeStamp;
 	}
 
-	/*
+	/**
 	 * Starts the event.
 	 */
 	public final void run() {
 		_operatingThread.start();
 	}
 
-	/*
+	/**
 	 * This is a helping method to save some code. It starts a new thread for
 	 * each available reaction and then waits for all of them to finish. Can
 	 * create an ErrorEvent if it is interrupted or the timer runs out.
 	 *
-	 * @param pRea a hashtable containing all reactions to be processed this
-	 * round
+	 * @param pRea
+	 *            a hashtable containing all reactions to be processed this
+	 *            round
 	 *
-	 * @param pThis the identifier of this event
+	 * @param pThis
+	 *            the identifier of this event
 	 */
 	private void startReaction(final Hashtable<String, Reaction> pRea,
 			final Event pThis) {
@@ -190,7 +203,7 @@ public abstract class Event {
 		}
 	}
 
-	/*
+	/**
 	 * pauses the current thread until the event is completely processed. Can
 	 * create an ErrorEvent if it is interrupted.
 	 */
