@@ -1,0 +1,34 @@
+Since this project is a project where many input-sources can act at once (keyboard, network interface, ...),
+it is automatically a project where parallelism plays a role.
+So why not make everything parallel, that can be made parallel? Sure, let's do that, but keep some things in mind:
+
+How do I make my code run parallel?
+That's pretty easy: you start a new thread that runs parallel to the thread that started it.
+Here's how
+new Thread() {
+	@Override
+	public void run() {
+		// TODO write some parallel code
+	}
+}.start();
+
+When does it make sense to run my code parallel?
+It makes sense whenever the code can potentially take some time to process.
+That can be because it is complex and needs to crunch a huge amount of numbers,
+or because it waits for some kind of input.
+In case of a Thread waiting for input it ALWAYS makes sense to start a new thread.
+
+Where's the hook?
+If multiple threads start using the same method on the same object and that method writes something to the variables,
+there can and will be errors. Example:
+if(i == 0) {
+	i++;
+} else if(i == 1) {
+	i--;
+}
+This method is not threadsafe, because two threads could check i and see that it's 0. Then both threads increment i by 1
+and that's the moment i is no longer alternating.
+
+How to fix that?
+You use the keyword "synchronized" on all methods that write something to an object's field.
+Static variables should only be set by static synchronized methods.
