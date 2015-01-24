@@ -14,6 +14,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 import modularity.events.compression.NeedCompressionEvent;
 import modularity.events.compression.NeedDecompressionEvent;
+import modularity.events.connection.CommandReceivedEvent;
 import modularity.events.errors.IOErrorEvent;
 import modularity.events.errors.InterruptedErrorEvent;
 
@@ -139,6 +140,7 @@ public class Connection {
 			while (!_receive.isEmpty()) {
 				s = s + _receive.poll();
 			}
+			new CommandReceivedEvent(s, this).run();
 			return s;
 		}
 		if (_sock != null) {
@@ -159,6 +161,7 @@ public class Connection {
 						}
 						str = str + ev.getMessage() + "\n";
 					} while (in.ready());
+					new CommandReceivedEvent(str, this).run();
 					return str;
 				} catch (final IOException e) {
 					new IOErrorEvent(e).run();
