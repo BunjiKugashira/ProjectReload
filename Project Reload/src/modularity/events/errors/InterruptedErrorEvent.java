@@ -21,4 +21,13 @@ public class InterruptedErrorEvent extends ErrorEvent {
 		return (InterruptedException) super.getException();
 	}
 
+	@Override
+	public void run() throws InterruptedException {
+		try {
+			super.run();
+		} catch (final Exception e) {
+			throw (InterruptedException) e;
+		}
+	}
+
 }

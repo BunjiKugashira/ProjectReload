@@ -3,13 +3,15 @@
  */
 package modularity.events.errors;
 
+import modularity.ThrowingReaction;
 import modularity.events.Event;
+import modularity.events.ThrowingEvent;
 
 /**
  * @author Alexander
  *
  */
-public abstract class ErrorEvent extends Event {
+public abstract class ErrorEvent extends ThrowingEvent {
 	private final Exception _exc;
 
 	/**
@@ -28,5 +30,17 @@ public abstract class ErrorEvent extends Event {
 	 */
 	public Exception getException() {
 		return _exc;
+	}
+
+	@Override
+	protected void registerEventspecificReactions() {
+		registerReaction("ErrorEvent.throwException", new ThrowingReaction() {
+
+			@Override
+			public void react(final Event pThis) throws Exception {
+				throw _exc;
+			}
+
+		}, 1);
 	}
 }

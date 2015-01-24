@@ -1,0 +1,3 @@
+The server accepts the following commands:
+
+x byebye Initiates the closing of the connection. "byebye" is an optional message. The initial sender of this message will close the connection. The server will send a closing-message back.

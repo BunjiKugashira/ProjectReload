@@ -9,22 +9,23 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeoutException;
 
 import modularity.Reaction;
+import modularity.ThrowingReaction;
 import modularity.events.errors.InterruptedErrorEvent;
 import modularity.events.errors.TimeoutErrorEvent;
 
 /**
- * This class is used to register reactions to events and call them when a new
+ * This class is used to register Reactions to events and call them when a new
  * event is created.
  *
  * @author Alexander Otto
  */
 public abstract class Event {
-	private static final Hashtable<String, Reaction> reactions = new Hashtable<String, Reaction>();
-	private static final Hashtable<String, Reaction> reactionsPost = new Hashtable<String, Reaction>();
-	private static final Hashtable<String, Reaction> reactionsPre = new Hashtable<String, Reaction>();
+	private static final Hashtable<String, ThrowingReaction> reactions = new Hashtable<String, ThrowingReaction>();
+	private static final Hashtable<String, ThrowingReaction> reactionsPost = new Hashtable<String, ThrowingReaction>();
+	private static final Hashtable<String, ThrowingReaction> reactionsPre = new Hashtable<String, ThrowingReaction>();
 
 	/**
-	 * Register reaction. TODO comment
+	 * Register Reaction. TODO comment
 	 *
 	 * @param pKey
 	 *            the key
@@ -32,13 +33,13 @@ public abstract class Event {
 	 *            the react
 	 * @return true, if successful
 	 */
-	public static final synchronized boolean registerReaction(
-			final String pKey, final Reaction pReact) {
+	public static synchronized boolean registerReaction(final String pKey,
+			final Reaction pReact) {
 		return registerReaction(pKey, pReact, 0);
 	}
 
 	/**
-	 * Registers a reaction that will be executed once this event occurs. If the
+	 * Registers a Reaction that will be executed once this event occurs. If the
 	 * key is already used it will not be registered.
 	 *
 	 * Requires pKey != null.
@@ -48,22 +49,22 @@ public abstract class Event {
 	 * Requires pOrder == -1 || pOrder == 0 || pOrder == 1.
 	 *
 	 * @param pKey
-	 *            a string-identifier for the reaction. Must be unique from all
-	 *            other registered reactions.
+	 *            a string-identifier for the Reaction. Must be unique from all
+	 *            other registered Reactions.
 	 *
 	 * @param pReact
-	 *            a reaction that is executed once this event occurs
+	 *            a Reaction that is executed once this event occurs
 	 *
 	 * @param pOrder
-	 *            if -1 then the reaction is executed before normal reactions,
+	 *            if -1 then the Reaction is executed before normal Reactions,
 	 *            if 0 it is executed normally and if 1 it is executed after
-	 *            normal reactions.
+	 *            normal Reactions.
 	 *
-	 * @return true if the key was unique and the reaction was sucessfully
+	 * @return true if the key was unique and the Reaction was sucessfully
 	 *         registered. else false.
 	 */
-	public static final synchronized boolean registerReaction(
-			final String pKey, final Reaction pReact, final int pOrder) {
+	public static synchronized boolean registerReaction(final String pKey,
+			final Reaction pReact, final int pOrder) {
 		assert (pKey != null);
 		assert (pReact != null);
 		assert ((pOrder == -1) || (pOrder == 0) || (pOrder == 1));
@@ -96,12 +97,12 @@ public abstract class Event {
 	}
 
 	/**
-	 * Removes a reaction from this event.
+	 * Removes a Reaction from this event.
 	 *
 	 * Requires pKey != null.
 	 *
 	 * @param pKey
-	 *            the key of the reaction that should be removed
+	 *            the key of the Reaction that should be removed
 	 */
 	public static final synchronized void removeReaction(final String pKey) {
 		assert (pKey != null);
@@ -111,10 +112,12 @@ public abstract class Event {
 		reactionsPost.remove(pKey);
 	}
 
+	private Exception _exc;
+
 	private boolean _isAlive;
 
 	/**
-	 * This timer determines how long the event will minimum wait for a reaction
+	 * This timer determines how long the event will minimum wait for a Reaction
 	 * to finish.
 	 */
 	protected int _joinTimer = 100;
@@ -130,13 +133,14 @@ public abstract class Event {
 	 * overwritten!
 	 *
 	 * Requires _joinTimer to be positive. This value must be positive. A value
-	 * of 0 can result in an infinite waiting-time. If the reactions don't
+	 * of 0 can result in an infinite waiting-time. If the Reactions don't
 	 * finish in time a new ErrorEvent is created. If the constructor isn't
 	 * overwritten the default-value fulfills this criteria.
 	 */
 	public Event() {
 		assert (_joinTimer >= 0);
 
+		_exc = null;
 		_isAlive = true;
 		_timeStamp = Instant.now();
 		_queue = new ConcurrentLinkedQueue<Thread>();
@@ -149,6 +153,7 @@ public abstract class Event {
 				startReaction(reactionsPost, ev);
 			}
 		};
+		registerEventspecificReactions();
 	}
 
 	/**
@@ -169,36 +174,52 @@ public abstract class Event {
 	}
 
 	/**
-	 * Starts the event.
+	 * Registers some eventspecific Reactions. Defaults to no action at all.
 	 */
-	public final void run() {
+	protected void registerEventspecificReactions() {
+
+	}
+
+	/**
+	 * Starts the event.
+	 * 
+	 * @throws Exception
+	 */
+	public void run() throws Exception {
 		_operatingThread.start();
+		throw _exc;
 	}
 
 	/**
 	 * This is a helping method to save some code. It starts a new thread for
-	 * each available reaction and then waits for all of them to finish. Can
+	 * each available Reaction and then waits for all of them to finish. Can
 	 * create an ErrorEvent if it is interrupted or the timer runs out.
 	 *
-	 * @param pRea
-	 *            a hashtable containing all reactions to be processed this
+	 * @param pReactions
+	 *            a hashtable containing all Reactions to be processed this
 	 *            round
 	 *
 	 * @param pThis
 	 *            the identifier of this event
 	 */
-	private void startReaction(final Hashtable<String, Reaction> pRea,
+	private void startReaction(
+			final Hashtable<String, ThrowingReaction> pReactions,
 			final Event pThis) {
 		// Check if the Event is still alive. If not there's nothing to do here.
 		if (!_isAlive) {
 			return;
 		}
-		// Setup threads for the reactions
-		for (final Reaction r : pRea.values()) {
+		// Setup threads for the Reactions
+		for (final ThrowingReaction r : pReactions.values()) {
 			final Thread thr = new Thread() {
 				@Override
 				public void run() {
-					r.react(pThis);
+					try {
+						r.react(pThis);
+					} catch (final Exception e) {
+						_exc = e;
+						_isAlive = false;
+					}
 				}
 			};
 			thr.start();
@@ -209,11 +230,23 @@ public abstract class Event {
 			try {
 				thr.join(_joinTimer);
 			} catch (final InterruptedException e) {
-				new InterruptedErrorEvent(e).run();
+				try {
+					new InterruptedErrorEvent(e).run();
+				} catch (final InterruptedException e1) {
+					// You are not supposed to interrupt this!
+					e1.printStackTrace();
+				}
 			}
 			if (thr.isAlive()) {
-				new TimeoutErrorEvent(new TimeoutException(
-						"Thread was still alive after timer ran out.")).run();
+				try {
+					new TimeoutErrorEvent(new TimeoutException(
+							"Thread was still alive after timer ran out."))
+							.run();
+				} catch (final TimeoutException e) {
+					// The timer ran out while the thread was still alive. TODO
+					// Figure out what's best to do now
+					thr.interrupt();
+				}
 			}
 		}
 	}
@@ -221,8 +254,10 @@ public abstract class Event {
 	/**
 	 * pauses the current thread until the event is completely processed. Can
 	 * create an ErrorEvent if it is interrupted.
+	 * 
+	 * @throws Exception
 	 */
-	public final void waitForCompletion() {
+	public void waitForCompletion() throws Exception {
 		try {
 			_operatingThread.join();
 		} catch (final InterruptedException e) {

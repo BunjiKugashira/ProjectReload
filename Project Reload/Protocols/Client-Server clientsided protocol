@@ -1,0 +1,4 @@
+The client accepts the following commands:
+
+x byebye  ---  Initiates the closing of the connection. "byebye" is an optional message. The initial sender of this message will close the connection. The client will send a closing-message back.
+e error  ---  Receives an error-message.

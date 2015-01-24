@@ -23,4 +23,13 @@ public class TimeoutErrorEvent extends ErrorEvent {
 		return (TimeoutException) super.getException();
 	}
 
+	@Override
+	public void run() throws TimeoutException {
+		try {
+			super.run();
+		} catch (final Exception e) {
+			throw (TimeoutException) e;
+		}
+	}
+
 }

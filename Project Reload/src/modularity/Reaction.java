@@ -11,14 +11,8 @@ import modularity.events.Event;
  *
  * @author Alexander Otto
  */
-public interface Reaction {
-
-	/**
-	 * This method is called when the event fires.
-	 *
-	 * @param pThis
-	 *            the event that called the method
-	 */
+public interface Reaction extends ThrowingReaction {
+	@Override
 	void react(Event pThis);
 
 }

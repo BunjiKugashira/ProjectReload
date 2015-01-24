@@ -3,28 +3,28 @@
  */
 package modularity.events.errors;
 
-import java.util.IllegalFormatException;
+import java.io.IOException;
 
 /**
  * @author Alexander
  *
  */
-public class IllegalFormatErrorEvent extends ErrorEvent {
+public class IOErrorEvent extends ErrorEvent {
 
 	/**
 	 * @param pExc
 	 */
-	public IllegalFormatErrorEvent(final IllegalFormatException pExc) {
+	public IOErrorEvent(final IOException pExc) {
 		super(pExc);
 		// TODO Auto-generated constructor stub
 	}
 
 	@Override
-	public void run() throws IllegalFormatException {
+	public void run() throws IOException {
 		try {
 			super.run();
 		} catch (final Exception e) {
-			throw (IllegalFormatException) e;
+			throw (IOException) e;
 		}
 	}
 
