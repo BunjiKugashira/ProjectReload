@@ -12,6 +12,8 @@ import java.net.Socket;
 import java.util.Arrays;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import modularity.events.compression.NeedCompressionEvent;
+import modularity.events.compression.NeedDecompressionEvent;
 import modularity.events.errors.IOErrorEvent;
 import modularity.events.errors.InterruptedErrorEvent;
 
@@ -147,7 +149,15 @@ public class Connection {
 				try {
 					String str = "";
 					do {
-						str = str + in.readLine() + "\n";
+						NeedDecompressionEvent ev = new NeedDecompressionEvent(in.readLine());
+						ev.run();
+						try {
+							ev.waitForCompletion();
+						} catch (Exception e) {
+							// This is not supposed to happen. If it still does: crash this shit!
+							e.printStackTrace();
+						}
+						str = str + ev.getMessage() + "\n";
 					} while (in.ready());
 					return str;
 				} catch (final IOException e) {
@@ -162,15 +172,23 @@ public class Connection {
 
 	public synchronized void send(final String pMessage) throws IOException {
 		if (_partner != null) {
-			_send.addAll(pMessage.contains("\\n") ? Arrays.asList(pMessage
-					.split("\\n")) : Arrays.asList(pMessage));
+			_send.addAll(pMessage.contains("\n") ? Arrays.asList(pMessage
+					.split("\n")) : Arrays.asList(pMessage));
 			_partner.notifyAll();
 		}
 		if (_sock != null) {
 			try {
 				final PrintWriter out = new PrintWriter(
 						_sock.getOutputStream(), true);
-				out.println(pMessage);
+				NeedCompressionEvent ev = new NeedCompressionEvent(pMessage);
+				ev.run();
+				try {
+					ev.waitForCompletion();
+				} catch (Exception e) {
+					// This is not supposed to happen. If it still does: crash this shit!
+					e.printStackTrace();
+				}
+				out.println(ev.getMessage());
 				out.flush();
 			} catch (final IOException e) {
 				new IOErrorEvent(e).run();
