@@ -187,7 +187,9 @@ public abstract class Event {
 	 */
 	public void run() throws Exception {
 		_operatingThread.start();
-		throw _exc;
+		if (_exc != null) {
+			throw _exc;
+		}
 	}
 
 	/**
