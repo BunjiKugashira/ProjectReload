@@ -62,7 +62,6 @@ public class NonThrowingEvent extends Event {
 	 */
 	public NonThrowingEvent() {
 		super(container);
-		_joinTimer = 5000; // TODO remove
 	}
 
 	/**

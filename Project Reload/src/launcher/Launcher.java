@@ -6,8 +6,10 @@ package launcher;
 import java.util.concurrent.TimeoutException;
 
 import modularity.Reaction;
+import modularity.eventListener.RegisterEventListener;
+import modularity.eventListener.example.ExampleEventListener;
 import modularity.events.Event;
-import modularity.events.NonThrowingEvent;
+import modularity.events.example.ExampleEvent;
 import modularity.events.errors.TimeoutErrorEvent;
 
 /**
@@ -21,9 +23,11 @@ public class Launcher {
 	 *            the arguments given at launching.
 	 */
 	public static void main(final String[] args) {
+		//new ExampleEventListener();
+		RegisterEventListener.run();
 		System.out.println("Registering new Events.");
 		for (int i = 0; i < 4; i++) {
-			NonThrowingEvent.container.registerReaction("Reaction " + i,
+			ExampleEvent.container.registerReaction("Reaction " + i,
 					new Reaction() {
 				@Override
 				public void react(final Event pThis) {
@@ -38,7 +42,7 @@ public class Launcher {
 			});
 		}
 		System.out.println("Creating new Event.");
-		final NonThrowingEvent ev = new NonThrowingEvent();
+		final ExampleEvent ev = new ExampleEvent();
 		System.out.println("Running Event.");
 		ev.run();
 		System.out.println("Event is running.");
