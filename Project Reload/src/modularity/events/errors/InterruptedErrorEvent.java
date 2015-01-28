@@ -3,31 +3,43 @@
  */
 package modularity.events.errors;
 
+import modularity.Reaction;
+import modularity.events.Event;
+
 /**
  * @author Alexander
  *
  */
 public class InterruptedErrorEvent extends ErrorEvent {
+	/**
+	 *
+	 */
+	public static final EventContainer container = new EventContainer();
+
+	/**
+	 * @param pEv
+	 * @param pExc
+	 */
+	public InterruptedErrorEvent(final EventContainer pEv,
+			final InterruptedException pExc) {
+		super(pEv, pExc);
+	}
 
 	/**
 	 * @param pExc
 	 */
 	public InterruptedErrorEvent(final InterruptedException pExc) {
-		super(pExc);
+		super(container, pExc);
 	}
 
 	@Override
-	public InterruptedException getException() {
-		return (InterruptedException) super.getException();
-	}
+	protected void registerEventspecificReactions() {
+		container.registerReaction("ErrorEvent.throwException", new Reaction() {
 
-	@Override
-	public void run() throws InterruptedException {
-		try {
-			super.run();
-		} catch (final Exception e) {
-			throw (InterruptedException) e;
-		}
+			@Override
+			public void react(final Event pThis) {
+				getException().printStackTrace();
+			}
+		}, 2);
 	}
-
 }

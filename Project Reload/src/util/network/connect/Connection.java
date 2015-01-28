@@ -77,13 +77,7 @@ public class Connection {
 							try {
 								wait(_timeout);
 							} catch (final InterruptedException e) {
-								try {
-									new InterruptedErrorEvent(e).run();
-								} catch (final InterruptedException e1) {
-									// This is not supposed to happen! Crash
-									// everything if it happens anyways!!!
-									e1.printStackTrace();
-								}
+								new InterruptedErrorEvent(e).run();
 							}
 						}
 
@@ -92,13 +86,7 @@ public class Connection {
 						try {
 							_sock.close();
 						} catch (final IOException e) {
-							try {
-								new IOErrorEvent(e).run();
-							} catch (final IOException e1) {
-								// This is not supposed to happen! Crash
-								// everything if it happens anyways!!!
-								e1.printStackTrace();
-							}
+							new IOErrorEvent(e).run();
 						}
 					}
 					if (_partner != null) {
@@ -132,7 +120,7 @@ public class Connection {
 			if (_receive.isEmpty()) {
 				try {
 					wait();
-				} catch (InterruptedException e) {
+				} catch (final InterruptedException e) {
 					new IOErrorEvent(new IOException()).run();
 				}
 			}
@@ -151,13 +139,13 @@ public class Connection {
 				try {
 					String str = "";
 					do {
-						NeedDecompressionEvent ev = new NeedDecompressionEvent(in.readLine());
+						final NeedDecompressionEvent ev = new NeedDecompressionEvent(
+								in.readLine());
 						ev.run();
 						try {
 							ev.waitForCompletion();
-						} catch (Exception e) {
-							// This is not supposed to happen. If it still does: crash this shit!
-							e.printStackTrace();
+						} catch (final InterruptedException e) {
+							new InterruptedErrorEvent(e);
 						}
 						str = str + ev.getMessage() + "\n";
 					} while (in.ready());
@@ -183,13 +171,13 @@ public class Connection {
 			try {
 				final PrintWriter out = new PrintWriter(
 						_sock.getOutputStream(), true);
-				NeedCompressionEvent ev = new NeedCompressionEvent(pMessage);
+				final NeedCompressionEvent ev = new NeedCompressionEvent(
+						pMessage);
 				ev.run();
 				try {
 					ev.waitForCompletion();
-				} catch (Exception e) {
-					// This is not supposed to happen. If it still does: crash this shit!
-					e.printStackTrace();
+				} catch (final InterruptedException e) {
+					new InterruptedErrorEvent(e);
 				}
 				out.println(ev.getMessage());
 				out.flush();

@@ -1,5 +1,5 @@
 /**
- * 
+ *
  */
 package modularity.events.compression;
 
@@ -8,13 +8,25 @@ package modularity.events.compression;
  *
  */
 public class NeedDecompressionEvent extends NeedCompressionEvent {
+	/**
+	 *
+	 */
+	public static final EventContainer container = new EventContainer();
+
+	/**
+	 * @param pEv
+	 * @param pMessage
+	 */
+	public NeedDecompressionEvent(final EventContainer pEv,
+			final String pMessage) {
+		super(pEv, pMessage);
+	}
 
 	/**
 	 * @param pMessage
 	 */
-	public NeedDecompressionEvent(String pMessage) {
-		super(pMessage);
-		// TODO Auto-generated constructor stub
+	public NeedDecompressionEvent(final String pMessage) {
+		super(container, pMessage);
 	}
 
 }

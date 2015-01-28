@@ -5,27 +5,42 @@ package modularity.events.errors;
 
 import java.io.IOException;
 
+import modularity.Reaction;
+import modularity.events.Event;
+
 /**
  * @author Alexander
  *
  */
 public class IOErrorEvent extends ErrorEvent {
+	/**
+	 *
+	 */
+	public static final EventContainer container = new EventContainer();
+
+	/**
+	 * @param pEv
+	 * @param pExc
+	 */
+	public IOErrorEvent(final EventContainer pEv, final IOException pExc) {
+		super(pEv, pExc);
+	}
 
 	/**
 	 * @param pExc
 	 */
 	public IOErrorEvent(final IOException pExc) {
-		super(pExc);
-		// TODO Auto-generated constructor stub
+		super(container, pExc);
 	}
 
 	@Override
-	public void run() throws IOException {
-		try {
-			super.run();
-		} catch (final Exception e) {
-			throw (IOException) e;
-		}
-	}
+	protected void registerEventspecificReactions() {
+		container.registerReaction("ErrorEvent.throwException", new Reaction() {
 
+			@Override
+			public void react(final Event pThis) {
+				getException().printStackTrace();
+			}
+		}, 2);
+	}
 }

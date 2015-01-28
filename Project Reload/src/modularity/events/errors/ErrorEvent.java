@@ -3,16 +3,33 @@
  */
 package modularity.events.errors;
 
-import modularity.ThrowingReaction;
+import modularity.Reaction;
 import modularity.events.Event;
-import modularity.events.ThrowingEvent;
+import modularity.events.NonThrowingEvent;
 
 /**
  * @author Alexander
  *
  */
-public abstract class ErrorEvent extends ThrowingEvent {
+public abstract class ErrorEvent extends NonThrowingEvent {
+	/**
+	 *
+	 */
+	public static final EventContainer container = new EventContainer();
 	private final Exception _exc;
+
+	/**
+	 * Instantiates a new error event. TODO comment
+	 *
+	 * @param pEv
+	 *
+	 * @param pExc
+	 *            the exc
+	 */
+	public ErrorEvent(final EventContainer pEv, final Exception pExc) {
+		super(pEv);
+		_exc = pExc;
+	}
 
 	/**
 	 * Instantiates a new error event. TODO comment
@@ -21,7 +38,7 @@ public abstract class ErrorEvent extends ThrowingEvent {
 	 *            the exc
 	 */
 	public ErrorEvent(final Exception pExc) {
-		super();
+		super(container);
 		_exc = pExc;
 	}
 
@@ -34,13 +51,12 @@ public abstract class ErrorEvent extends ThrowingEvent {
 
 	@Override
 	protected void registerEventspecificReactions() {
-		registerReaction("ErrorEvent.throwException", new ThrowingReaction() {
+		container.registerReaction("ErrorEvent.throwException", new Reaction() {
 
 			@Override
-			public void react(final Event pThis) throws Exception {
-				throw _exc;
+			public void react(final Event pThis) {
+				getException().printStackTrace();
 			}
-
-		}, 1);
+		}, 2);
 	}
 }

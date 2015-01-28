@@ -14,9 +14,9 @@ public interface ThrowingReaction {
 	/**
 	 * This method is called when the event fires.
 	 *
-	 * @param pThis
+	 * @param ev
 	 *            the event that called the method
 	 * @throws Exception
 	 */
-	void react(Event pThis) throws Exception;
+	void react(Event ev) throws Exception;
 }
