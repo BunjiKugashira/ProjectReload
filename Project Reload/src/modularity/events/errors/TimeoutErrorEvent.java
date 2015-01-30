@@ -22,7 +22,7 @@ public class TimeoutErrorEvent extends ErrorEvent {
 	 * @param pEv
 	 * @param pExc
 	 */
-	public TimeoutErrorEvent(final EventContainer pEv,
+	protected TimeoutErrorEvent(final EventContainer pEv,
 			final TimeoutException pExc) {
 		super(pEv, pExc);
 	}

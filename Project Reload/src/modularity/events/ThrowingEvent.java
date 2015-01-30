@@ -16,7 +16,7 @@ public class ThrowingEvent extends Event {
 	 *
 	 */
 	public class ExceptionArray extends Exception implements
-			Iterable<Exception> {
+	Iterable<Exception> {
 
 		/**
 		 *
@@ -33,7 +33,7 @@ public class ThrowingEvent extends Event {
 
 		/*
 		 * (non-Javadoc)
-		 * 
+		 *
 		 * @see java.lang.Iterable#iterator()
 		 */
 		@Override
@@ -69,7 +69,7 @@ public class ThrowingEvent extends Event {
 	 * @param pEv
 	 * @throws ExceptionArray
 	 */
-	public ThrowingEvent(final EventContainer pEv) throws ExceptionArray {
+	protected ThrowingEvent(final EventContainer pEv) throws ExceptionArray {
 		super(pEv);
 		if (!getExceptions().isEmpty()) {
 			throw new ExceptionArray(getExceptions());

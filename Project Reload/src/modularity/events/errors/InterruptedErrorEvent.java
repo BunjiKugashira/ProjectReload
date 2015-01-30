@@ -20,7 +20,7 @@ public class InterruptedErrorEvent extends ErrorEvent {
 	 * @param pEv
 	 * @param pExc
 	 */
-	public InterruptedErrorEvent(final EventContainer pEv,
+	protected InterruptedErrorEvent(final EventContainer pEv,
 			final InterruptedException pExc) {
 		super(pEv, pExc);
 	}

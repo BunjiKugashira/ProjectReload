@@ -17,7 +17,7 @@ public class NeedDecompressionEvent extends NeedCompressionEvent {
 	 * @param pEv
 	 * @param pMessage
 	 */
-	public NeedDecompressionEvent(final EventContainer pEv,
+	protected NeedDecompressionEvent(final EventContainer pEv,
 			final String pMessage) {
 		super(pEv, pMessage);
 	}

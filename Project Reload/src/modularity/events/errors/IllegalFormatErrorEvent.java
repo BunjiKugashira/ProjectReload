@@ -22,7 +22,7 @@ public class IllegalFormatErrorEvent extends ErrorEvent {
 	 * @param pEv
 	 * @param pExc
 	 */
-	public IllegalFormatErrorEvent(final EventContainer pEv,
+	protected IllegalFormatErrorEvent(final EventContainer pEv,
 			final IllegalFormatException pExc) {
 		super(pEv, pExc);
 	}

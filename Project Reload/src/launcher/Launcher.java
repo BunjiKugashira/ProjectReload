@@ -3,14 +3,10 @@
  */
 package launcher;
 
-import java.util.concurrent.TimeoutException;
-
 import modularity.Reaction;
-import modularity.eventListener.RegisterEventListener;
-import modularity.eventListener.example.ExampleEventListener;
 import modularity.events.Event;
 import modularity.events.example.ExampleEvent;
-import modularity.events.errors.TimeoutErrorEvent;
+import util.meta.FileManager;
 
 /**
  * @author Alexander
@@ -23,23 +19,25 @@ public class Launcher {
 	 *            the arguments given at launching.
 	 */
 	public static void main(final String[] args) {
-		//new ExampleEventListener();
-		RegisterEventListener.run();
+		// new ExampleEventListener();
+		FileManager.createDirectory(FileManager.getPath("TestPath01"));
+		FileManager.loadFiles(FileManager
+				.getPath("bin\\modularity\\eventListener\\example"));
 		System.out.println("Registering new Events.");
 		for (int i = 0; i < 4; i++) {
 			ExampleEvent.container.registerReaction("Reaction " + i,
 					new Reaction() {
-				@Override
-				public void react(final Event pThis) {
-					try {
-						Thread.sleep((long) (Math.random() * 5000));
-					} catch (final InterruptedException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-					System.out.println("Event concluded.");
-				}
-			});
+						@Override
+						public void react(final Event pThis) {
+							try {
+								Thread.sleep((long) (Math.random() * 5000));
+							} catch (final InterruptedException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+							System.out.println("Event concluded.");
+						}
+					});
 		}
 		System.out.println("Creating new Event.");
 		final ExampleEvent ev = new ExampleEvent();
@@ -53,7 +51,7 @@ public class Launcher {
 			e.printStackTrace();
 		}
 		System.out.println("Event finished.");
-		new TimeoutErrorEvent(new TimeoutException("Test")).run();
+		// new TimeoutErrorEvent(new TimeoutException("Test")).run();
 	}
 
 }

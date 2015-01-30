@@ -21,7 +21,8 @@ public class NeedCompressionEvent extends NonThrowingEvent {
 	 * @param pMessage
 	 *
 	 */
-	public NeedCompressionEvent(final EventContainer pEv, final String pMessage) {
+	protected NeedCompressionEvent(final EventContainer pEv,
+			final String pMessage) {
 		super(pEv);
 		setMessage(pMessage);
 	}

@@ -16,6 +16,7 @@ public abstract class ErrorEvent extends NonThrowingEvent {
 	 *
 	 */
 	public static final EventContainer container = new EventContainer();
+	private final EventContainer _cont;
 	private final Exception _exc;
 
 	/**
@@ -26,8 +27,9 @@ public abstract class ErrorEvent extends NonThrowingEvent {
 	 * @param pExc
 	 *            the exc
 	 */
-	public ErrorEvent(final EventContainer pEv, final Exception pExc) {
+	protected ErrorEvent(final EventContainer pEv, final Exception pExc) {
 		super(pEv);
+		_cont = pEv;
 		_exc = pExc;
 	}
 
@@ -39,6 +41,7 @@ public abstract class ErrorEvent extends NonThrowingEvent {
 	 */
 	public ErrorEvent(final Exception pExc) {
 		super(container);
+		_cont = container;
 		_exc = pExc;
 	}
 
@@ -51,7 +54,7 @@ public abstract class ErrorEvent extends NonThrowingEvent {
 
 	@Override
 	protected void registerEventspecificReactions() {
-		container.registerReaction("ErrorEvent.throwException", new Reaction() {
+		_cont.registerReaction("ErrorEvent.throwException", new Reaction() {
 
 			@Override
 			public void react(final Event pThis) {

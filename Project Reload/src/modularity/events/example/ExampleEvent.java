@@ -1,5 +1,5 @@
 /**
- * 
+ *
  */
 package modularity.events.example;
 
@@ -16,17 +16,18 @@ public class ExampleEvent extends NonThrowingEvent {
 	public static final EventContainer container = new EventContainer();
 
 	/**
-	 * 
+	 *
 	 */
 	public ExampleEvent() {
 		super(container);
-		_joinTimer = 5000; // Set this to what you think is appropriate or just leave it away.
+		_joinTimer = 5000; // Set this to what you think is appropriate or just
+							// leave it away.
 	}
 
 	/**
 	 * @param pEv
 	 */
-	public ExampleEvent(EventContainer pEv) {
+	protected ExampleEvent(final EventContainer pEv) {
 		super(pEv);
 		_joinTimer = 5000; // see ExampleEvent()
 	}

@@ -115,7 +115,6 @@ public abstract class Event {
 	 *
 	 */
 	protected Event(final EventContainer pEv) {
-		registerEventspecificReactions();
 		_timestamp = Instant.now();
 		_queue = new ConcurrentLinkedQueue<Thread>();
 		_exceptions = new HashSet<Exception>();
@@ -161,6 +160,7 @@ public abstract class Event {
 	 *
 	 */
 	public final void run() {
+		registerEventspecificReactions();
 		_operatingThread.start();
 	}
 

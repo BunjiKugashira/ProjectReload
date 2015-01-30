@@ -22,7 +22,7 @@ public class IOErrorEvent extends ErrorEvent {
 	 * @param pEv
 	 * @param pExc
 	 */
-	public IOErrorEvent(final EventContainer pEv, final IOException pExc) {
+	protected IOErrorEvent(final EventContainer pEv, final IOException pExc) {
 		super(pEv, pExc);
 	}
 

@@ -24,7 +24,7 @@ public class CommandReceivedEvent extends NonThrowingEvent {
 	 * @param pSource
 	 *
 	 */
-	public CommandReceivedEvent(final EventContainer pEv,
+	protected CommandReceivedEvent(final EventContainer pEv,
 			final String pCommand, final Connection pSource) {
 		super(pEv);
 		_command = pCommand;
