@@ -15,6 +15,7 @@ import util.meta.FileManager;
 public class Launcher {
 
 	/**
+	 * 
 	 * @param args
 	 *            the arguments given at launching.
 	 */
@@ -52,6 +53,18 @@ public class Launcher {
 		}
 		System.out.println("Event finished.");
 		// new TimeoutErrorEvent(new TimeoutException("Test")).run();
+		
+		
+		// TODO Load all EventListeners
+		// TODO Open up a gui
+		
+		// TODO Patch
+		// TODO Wait for user-input
+		// TODO Log in
+		// TODO Wait for user-input
+		// TODO Start internal Server
+		
+		// TODO Start Client
 	}
 
 }

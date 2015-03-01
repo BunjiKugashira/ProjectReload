@@ -58,7 +58,6 @@ public class FileManager {
 			return null;
 		}
 		try {
-			// DirectoryStream<Path> stream = Files.newDirectoryStream(pPath);
 			return Files.list(pPath);
 		} catch (final NotDirectoryException e) {
 			return null;
@@ -111,7 +110,6 @@ public class FileManager {
 						path = path.replace("\\", ".");
 						System.out.println(path);
 						Class<?> c = null;
-						;
 						try {
 							c = cl.loadClass(path);
 							System.out.println(c.getName());
@@ -163,6 +161,7 @@ public class FileManager {
 		final Enumeration<JarEntry> jarEntries = pJar.entries();
 		while (jarEntries.hasMoreElements()) {
 			loadJarContent(jarEntries.nextElement());
+			// TODO load
 		}
 	}
 
