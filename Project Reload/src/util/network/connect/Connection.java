@@ -102,20 +102,16 @@ public class Connection {
 		}
 	}
 
-	public synchronized void disconnect() {
+	public synchronized void disconnect() throws IOException, InterruptedException {
 		if (_disconnectAnnounced == null) {
-			try {
-				send("x");
-			} catch (final IOException e) {
-				_timeout = 0;
-			}
+			send("x");
 			closeConnection(_timeout);
 		} else {
 			closeConnection(0);
 		}
 	}
 
-	public synchronized String receive() throws IOException {
+	public synchronized String receive() throws IOException, InterruptedException {
 		if (_partner != null) {
 			if (_receive.isEmpty()) {
 				try {
@@ -142,11 +138,7 @@ public class Connection {
 						final NeedDecompressionEvent ev = new NeedDecompressionEvent(
 								in.readLine());
 						ev.run();
-						try {
-							ev.waitForCompletion();
-						} catch (final InterruptedException e) {
-							new InterruptedErrorEvent(e);
-						}
+						ev.waitForCompletion();
 						str = str + ev.getMessage() + "\n";
 					} while (in.ready());
 					new CommandReceivedEvent(str, this).run();
@@ -161,7 +153,7 @@ public class Connection {
 		return null;
 	}
 
-	public synchronized void send(final String pMessage) throws IOException {
+	public synchronized void send(final String pMessage) {
 		if (_partner != null) {
 			_send.addAll(pMessage.contains("\n") ? Arrays.asList(pMessage
 					.split("\n")) : Arrays.asList(pMessage));
@@ -174,11 +166,7 @@ public class Connection {
 				final NeedCompressionEvent ev = new NeedCompressionEvent(
 						pMessage);
 				ev.run();
-				try {
-					ev.waitForCompletion();
-				} catch (final InterruptedException e) {
-					new InterruptedErrorEvent(e);
-				}
+				ev.waitForCompletion();
 				out.println(ev.getMessage());
 				out.flush();
 			} catch (final IOException e) {

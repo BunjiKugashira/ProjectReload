@@ -10,7 +10,7 @@ import modularity.ThrowingReaction;
  * @author Alexander
  *
  */
-public class NonThrowingEvent extends Event {
+public abstract class NonThrowingEvent extends Event {
 	/**
 	 * @author Alexander
 	 *
@@ -50,18 +50,6 @@ public class NonThrowingEvent extends Event {
 				final ThrowingReaction pReact, final int pOrder) {
 			return super.registerReaction(pKey, pReact, pOrder);
 		}
-	}
-
-	/**
-	 *
-	 */
-	public static final EventContainer container = new EventContainer();
-
-	/**
-	 *
-	 */
-	public NonThrowingEvent() {
-		super(container);
 	}
 
 	/**

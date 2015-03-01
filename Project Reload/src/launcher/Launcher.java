@@ -19,7 +19,7 @@ public class Launcher {
 	 * @param args
 	 *            the arguments given at launching.
 	 */
-	public static void main(final String[] args) {
+	public static void main(final String[] args) throws InterruptedException {
 		// new ExampleEventListener();
 		FileManager.createDirectory(FileManager.getPath("TestPath01"));
 		FileManager.loadFiles(FileManager
@@ -45,12 +45,7 @@ public class Launcher {
 		System.out.println("Running Event.");
 		ev.run();
 		System.out.println("Event is running.");
-		try {
-			ev.waitForCompletion();
-		} catch (final InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		ev.waitForCompletion();
 		System.out.println("Event finished.");
 		// new TimeoutErrorEvent(new TimeoutException("Test")).run();
 		

@@ -10,7 +10,7 @@ import java.util.Iterator;
  * @author Alexander
  *
  */
-public class ThrowingEvent extends Event {
+public abstract class ThrowingEvent extends Event {
 	/**
 	 * @author Alexander
 	 *
@@ -48,21 +48,6 @@ public class ThrowingEvent extends Event {
 			return _exceptions;
 		}
 
-	}
-
-	/**
-	 *
-	 */
-	public static final EventContainer container = new EventContainer();
-
-	/**
-	 * @throws ExceptionArray
-	 */
-	public ThrowingEvent() throws ExceptionArray {
-		super(container);
-		if (!getExceptions().isEmpty()) {
-			throw new ExceptionArray(getExceptions());
-		}
 	}
 
 	/**

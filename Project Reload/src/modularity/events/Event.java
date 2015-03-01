@@ -14,11 +14,13 @@ import modularity.events.errors.InterruptedErrorEvent;
 import modularity.events.errors.TimeoutErrorEvent;
 
 /**
+ * This is the basic Eventclass. It is used to create Events and have other classes react to them.
  * @author Alexander
  *
  */
 public abstract class Event {
 	/**
+	 * This is the Eventcontainer. It contains all the variables of an eventtype (because static variables are not inherited, but remain property of the parent class). This way an inheriting eventclass only needs to create one static Eventcontainer.
 	 * @author Alexander
 	 *
 	 */
@@ -28,7 +30,7 @@ public abstract class Event {
 		private final Hashtable<String, ThrowingReaction> reactionsPre;
 
 		/**
-		 *
+		 * The constructor of the EventContainer. It inicializes the fields.
 		 */
 		public EventContainer() {
 			reactionsPre = new Hashtable<String, ThrowingReaction>();
@@ -37,9 +39,11 @@ public abstract class Event {
 		}
 
 		/**
-		 * @param pKey
-		 * @param pReact
-		 * @return fdsa
+		 * Registers a reaction with a specific key, if the key is not already taken.
+		 * Same as registerReaction(pKey, pReact, 1)
+		 * @param pKey The key that represents this reaction. It must be unique and can be used to remove the reaction again.
+		 * @param pReact The reaction that should be registered.
+		 * @return True if the key is unique, else false.
 		 */
 		public synchronized boolean registerReaction(final String pKey,
 				final ThrowingReaction pReact) {
@@ -47,10 +51,11 @@ public abstract class Event {
 		}
 
 		/**
-		 * @param pKey
-		 * @param pReact
-		 * @param pOrder
-		 * @return bla
+		 * Registers a reaction with a specific key, if the key is not already taken.
+		 * @param pKey The key that represents this reaction. It must be unique and can be used to remove the reaction again.
+		 * @param pReact The reaction that should be registered.
+		 * @param pOrder 0 to run the reaction in the pre-stage, 1 to run it in the normal stage and 2 to run it in the post-stage.
+		 * @return True if the key is unique, else false.
 		 */
 		public synchronized boolean registerReaction(final String pKey,
 				final ThrowingReaction pReact, final int pOrder) {
@@ -85,7 +90,8 @@ public abstract class Event {
 		}
 
 		/**
-		 * @param pKey
+		 * Removes a reaction from this event.
+		 * @param pKey The key for the reaction to remove.
 		 */
 		public synchronized void removeReaction(final String pKey) {
 			assert (pKey != null);
@@ -100,7 +106,7 @@ public abstract class Event {
 	private boolean _isAlive = true;
 
 	/**
-	 *
+	 * The time in millis that each reaction has minimum to finish whatever it is doing. The standard is 100 millis.
 	 */
 	protected int _joinTimer = 100;
 
@@ -111,7 +117,8 @@ public abstract class Event {
 	private final Instant _timestamp;
 
 	/**
-	 * @param pEv
+	 * The constructor of the class Event. It initializes the fields.
+	 * @param pEv The eventcontainer of the top-level event that was created.
 	 *
 	 */
 	protected Event(final EventContainer pEv) {
@@ -129,6 +136,7 @@ public abstract class Event {
 	}
 
 	/**
+	 * It is possible that some reactions threw exceptions while running. However the event can't crash. That's why you can check for exceptions here.
 	 * @return the Exceptions
 	 */
 	public final HashSet<Exception> getExceptions() {
@@ -136,6 +144,7 @@ public abstract class Event {
 	}
 
 	/**
+	 * The instant that this event was created by calling it's constructor.
 	 * @return time fired
 	 */
 	public final Instant getTimeFired() {
@@ -143,21 +152,21 @@ public abstract class Event {
 	}
 
 	/**
-	 *
+	 * Kills the event. The current stage will still be completed, but following stages won't. Doesn't do anything if the event is already in the post-stage.
 	 */
 	public final synchronized void kill() {
 		_isAlive = false;
 	}
 
 	/**
-	 *
+	 * This method can be overwritten to make an event register some reactions for itself.
 	 */
 	protected void registerEventspecificReactions() {
 
 	}
 
 	/**
-	 *
+	 * Starts the event. It is necessary to call this method or else the event won't do anything.
 	 */
 	public final void run() {
 		registerEventspecificReactions();
@@ -200,9 +209,9 @@ public abstract class Event {
 	}
 
 	/**
-	 * @throws InterruptedException
+	 * Pauses the current thread until all reactions on the event are completed or timed out.
 	 */
-	public final void waitForCompletion() throws InterruptedException {
+	public final void waitForCompletion() {
 		try {
 			_operatingThread.join();
 		} catch (final InterruptedException e) {

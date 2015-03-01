@@ -13,9 +13,6 @@ import util.meta.Loadable;
  *
  */
 public class ExampleEventListener implements Loadable {
-	@SuppressWarnings("unused")
-	private static ExampleEventListener init = new ExampleEventListener();
-
 	/**
 	 *
 	 */
