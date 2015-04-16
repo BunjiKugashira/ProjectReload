@@ -33,7 +33,7 @@ public class Launcher {
 							try {
 								Thread.sleep((long) (Math.random() * 5000));
 							} catch (final InterruptedException e) {
-								// TODO Auto-generated catch block
+								// 
 								e.printStackTrace();
 							}
 							System.out.println("Event concluded.");

@@ -3,11 +3,13 @@
  */
 package modularity.events.errors;
 
+import java.lang.InstantiationException;
+
 /**
  * @author Alexander
  *
  */
-public class SecurityErrorEvent extends ErrorEvent {
+public class InstantiationErrorEvent extends ErrorEvent {
 	/**
 	 *
 	 */
@@ -17,15 +19,15 @@ public class SecurityErrorEvent extends ErrorEvent {
 	 * @param pEv
 	 * @param pExc
 	 */
-	protected SecurityErrorEvent(final EventContainer pEv,
-			final SecurityException pExc) {
+	protected InstantiationErrorEvent(final EventContainer pEv,
+			final InstantiationException pExc) {
 		super(pEv, pExc);
 	}
 
 	/**
 	 * @param pExc
 	 */
-	public SecurityErrorEvent(final SecurityException pExc) {
+	public InstantiationErrorEvent(final InstantiationException pExc) {
 		super(container, pExc);
 	}
 
