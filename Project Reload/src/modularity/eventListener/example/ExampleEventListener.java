@@ -3,8 +3,8 @@
  */
 package modularity.eventListener.example;
 
-import modularity.Reaction;
-import modularity.events.Event;
+import modularity.ReactionOld;
+import modularity.events.EventOld;
 import modularity.events.example.ExampleEvent;
 import util.meta.Loadable;
 
@@ -28,10 +28,10 @@ public class ExampleEventListener implements Loadable {
 	@Override
 	public void load() {
 		ExampleEvent.container.registerReaction("example-reaction",
-				new Reaction() {
+				new ReactionOld() {
 
 					@Override
-					public void react(final Event pThis) {
+					public void react(final EventOld pThis) {
 						System.out.println("This is an example-reaction.");
 					}
 				});

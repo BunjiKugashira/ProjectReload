@@ -10,7 +10,7 @@ import java.util.Iterator;
  * @author Alexander
  *
  */
-public abstract class ThrowingEvent extends Event {
+public abstract class ThrowingEvent extends EventOld {
 	/**
 	 * @author Alexander
 	 *

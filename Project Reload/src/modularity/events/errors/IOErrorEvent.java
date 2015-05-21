@@ -5,8 +5,8 @@ package modularity.events.errors;
 
 import java.io.IOException;
 
-import modularity.Reaction;
-import modularity.events.Event;
+import modularity.ReactionOld;
+import modularity.events.EventOld;
 
 /**
  * @author Alexander
@@ -35,10 +35,10 @@ public class IOErrorEvent extends ErrorEvent {
 
 	@Override
 	protected void registerEventspecificReactions() {
-		container.registerReaction("ErrorEvent.throwException", new Reaction() {
+		container.registerReaction("ErrorEvent.throwException", new ReactionOld() {
 
 			@Override
-			public void react(final Event pThis) {
+			public void react(final EventOld pThis) {
 				getException().printStackTrace();
 			}
 		}, 2);

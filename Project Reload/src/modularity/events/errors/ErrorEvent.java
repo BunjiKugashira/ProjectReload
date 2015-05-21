@@ -3,8 +3,8 @@
  */
 package modularity.events.errors;
 
-import modularity.Reaction;
-import modularity.events.Event;
+import modularity.ReactionOld;
+import modularity.events.EventOld;
 import modularity.events.NonThrowingEvent;
 
 /**
@@ -54,10 +54,10 @@ public abstract class ErrorEvent extends NonThrowingEvent {
 
 	@Override
 	protected void registerEventspecificReactions() {
-		_cont.registerReaction("ErrorEvent.throwException", new Reaction() {
+		_cont.registerReaction("ErrorEvent.throwException", new ReactionOld() {
 
 			@Override
-			public void react(final Event pThis) {
+			public void react(final EventOld pThis) {
 				getException().printStackTrace();
 			}
 		}, 2);

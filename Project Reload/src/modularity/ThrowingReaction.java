@@ -3,7 +3,7 @@
  */
 package modularity;
 
-import modularity.events.Event;
+import modularity.events.EventOld;
 
 /**
  * This interface is tied to the Event-class. It is used to implement reactions
@@ -21,5 +21,7 @@ public interface ThrowingReaction {
 	 *            the event that called the method
 	 * @throws Exception
 	 */
-	void react(Event pThis) throws Exception;
+	void react(EventOld pThis) throws Exception;
+	
+	int getPriority();
 }
