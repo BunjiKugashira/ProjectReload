@@ -19,7 +19,7 @@ public class Launcher {
 	 * @param args
 	 *            the arguments given at launching.
 	 */
-	public static void main(final String[] args) throws InterruptedException {
+	public static void main(final String[] args) {
 		// new ExampleEventListener();
 		FileManager.createDirectory(FileManager.getPath("TestPath01"));
 		FileManager.loadFiles(FileManager
