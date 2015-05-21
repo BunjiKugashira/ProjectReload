@@ -3,26 +3,26 @@
  */
 package modularity.events;
 
-import modularity.Reaction;
+import modularity.ReactionOld;
 import modularity.ThrowingReaction;
 
 /**
  * @author Alexander
  *
  */
-public abstract class NonThrowingEvent extends Event {
+public abstract class NonThrowingEvent extends EventOld {
 	/**
 	 * @author Alexander
 	 *
 	 */
-	public static class EventContainer extends Event.EventContainer {
+	public static class EventContainer extends EventOld.EventContainer {
 		/**
 		 * @param pKey
 		 * @param pReact
 		 * @return dfsa
 		 */
 		public synchronized boolean registerReaction(final String pKey,
-				final Reaction pReact) {
+				final ReactionOld pReact) {
 			return super.registerReaction(pKey, pReact);
 		}
 
@@ -33,7 +33,7 @@ public abstract class NonThrowingEvent extends Event {
 		 * @return dfsa
 		 */
 		public synchronized boolean registerReaction(final String pKey,
-				final Reaction pReact, final int pOrder) {
+				final ReactionOld pReact, final int pOrder) {
 			return super.registerReaction(pKey, pReact, pOrder);
 		}
 
@@ -53,7 +53,7 @@ public abstract class NonThrowingEvent extends Event {
 	}
 
 	/**
-	 * @see Event#Event(EventContainer)
+	 * @see EventOld#Event(EventContainer)
 	 * @param pEv
 	 */
 	protected NonThrowingEvent(final EventContainer pEv) {

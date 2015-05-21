@@ -3,8 +3,9 @@
  */
 package launcher;
 
-import modularity.Reaction;
-import modularity.events.Event;
+import error.Log;
+import modularity.ReactionOld;
+import modularity.events.EventOld;
 import modularity.events.example.ExampleEvent;
 import util.meta.FileManager;
 
@@ -27,14 +28,14 @@ public class Launcher {
 		System.out.println("Registering new Events.");
 		for (int i = 0; i < 4; i++) {
 			ExampleEvent.container.registerReaction("Reaction " + i,
-					new Reaction() {
+					new ReactionOld() {
 						@Override
-						public void react(final Event pThis) {
+						public void react(final EventOld pThis) {
 							try {
 								Thread.sleep((long) (Math.random() * 5000));
 							} catch (final InterruptedException e) {
-								// TODO Auto-generated catch block
-								e.printStackTrace();
+								Log.logError(e);
+								Log.crash();
 							}
 							System.out.println("Event concluded.");
 						}
@@ -56,8 +57,8 @@ public class Launcher {
 		// TODO Patch
 		// TODO Wait for user-input
 		// TODO Log in
-		// TODO Wait for user-input
 		// TODO Start internal Server
+		// TODO Wait for user-input
 		
 		// TODO Start Client
 	}

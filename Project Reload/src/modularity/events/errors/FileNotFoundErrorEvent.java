@@ -22,7 +22,6 @@ public class FileNotFoundErrorEvent extends ErrorEvent {
 	protected FileNotFoundErrorEvent(final EventContainer pEv,
 			final FileNotFoundException pExc) {
 		super(pEv, pExc);
-		// TODO Auto-generated constructor stub
 	}
 
 	/**
@@ -30,7 +29,6 @@ public class FileNotFoundErrorEvent extends ErrorEvent {
 	 */
 	public FileNotFoundErrorEvent(final FileNotFoundException pExc) {
 		super(container, pExc);
-		// TODO Auto-generated constructor stub
 	}
 
 }

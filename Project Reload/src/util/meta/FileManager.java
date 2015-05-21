@@ -15,8 +15,10 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.stream.Stream;
 
+import error.Log;
 import modularity.events.errors.FileNotFoundErrorEvent;
 import modularity.events.errors.IOErrorEvent;
+import modularity.events.errors.InstantiationErrorEvent;
 import modularity.events.errors.SecurityErrorEvent;
 
 /**
@@ -37,7 +39,6 @@ public class FileManager {
 		try {
 			Files.createDirectory(pPath);
 			return true;
-			// TODO check if the directory is new or already in use
 		} catch (final FileAlreadyExistsException e) {
 			return false;
 		} catch (final IOException e) {
@@ -125,8 +126,8 @@ public class FileManager {
 										impl = true;
 									}
 								} catch (final ClassNotFoundException e) {
-									// TODO Auto-generated catch block
-									e.printStackTrace();
+									Log.logError(e);
+									Log.crash();
 								}
 							}
 							if (impl) {
@@ -135,11 +136,10 @@ public class FileManager {
 											.newInstance();
 									l.load();
 								} catch (final InstantiationException e) {
-									// TODO Auto-generated catch block
-									e.printStackTrace();
+									new InstantiationErrorEvent(e).run();
 								} catch (final IllegalAccessException e) {
-									// TODO Auto-generated catch block
-									e.printStackTrace();
+									Log.logError(e);
+									Log.crash();
 								}
 							}
 						}
@@ -178,13 +178,6 @@ public class FileManager {
 		} catch (final IOException e) {
 			new IOErrorEvent(e).run();
 		}
-	}
-
-	/**
-	 *
-	 */
-	public FileManager() {
-		// TODO Auto-generated constructor stub
 	}
 
 }
