@@ -6,6 +6,8 @@ package modularity.events;
 import java.time.Instant;
 import java.time.temporal.*;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.LinkedList;
@@ -13,21 +15,31 @@ import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.TimeoutException;
 
+import error.Log;
+import util.meta.Block;
 import util.meta.ManagedThread;
-import modularity.Reaction;
 
 /**
  * @author Alexander Otto
+ * @param <T>
  *
  */
-public abstract class Event {
-	public final int _timeout; // Time in MILLIS that all reactions have to complete. Pre- main- and postoperations are timed independantly.
-	public int _priority; // Priority of the event. Further information: ManagedThread - Priority
+public class Event<T> {
+	/**
+	 * Time in MILLIS that all reactions have to complete. Pre- main- and postoperations are timed independantly.
+	 */
+	public final int _timeout;
+	/**
+	 * Priority of the event. Further information: ManagedThread - Priority
+	 */
+	public int _priority;
 	private final Hashtable<String, Reaction> _reactionsPre;
 	private final Hashtable<String, Reaction> _reactions;
 	private final Hashtable<String, Reaction> _reactionsPost;
-	private static final Hashtable<String, Event> _events = new Hashtable<String, Event>(); // Contains all Events + their identifier
+	private static final Hashtable<String, Event<?>> _events = new Hashtable<String, Event<?>>(); // Contains all Events + their identifier
 	private ManagedThread _thr; // The thread that's launching the reactions
+	private static Block _statBlock = new Block();
+	private Block _block;
 	
 	/**
 	 * Constructor of class Event. Creates a new event that can be operated on if you have the identifier.
@@ -36,13 +48,20 @@ public abstract class Event {
 	 * @param pTimeout The time in MILLIS that all reactions to this event get to complete. Should be greater than 0.
 	 */
 	public Event(String pEvent, int pTimeout) {
+		_block = new Block();
 		_timeout = pTimeout;
 		_reactionsPre = new Hashtable<String, Reaction>();
 		_reactions = new Hashtable<String, Reaction>();
 		_reactionsPost = new Hashtable<String, Reaction>();
 		registerEvent(pEvent);
 	}
+	/**
+	 * Ref. Event(String pEvent, 100)
+	 * 
+	 * @param pEvent
+	 */
 	public Event(String pEvent) {
+		_block = new Block();
 		_timeout = 100;
 		_reactionsPre = new Hashtable<String, Reaction>();
 		_reactions = new Hashtable<String, Reaction>();
@@ -50,21 +69,25 @@ public abstract class Event {
 		registerEvent(pEvent);
 	}
 	
-	private synchronized void registerEvent(String pEvent) {
+	private final void registerEvent(String pEvent) {
+		_statBlock.write();
 		if (_events.containsKey(pEvent)) {
-			
+			// TODO error
 		}
 		else {
 			_events.put(pEvent, this);
 		}
+		_statBlock.release();
 	}
 	
 	/**
 	 * Removes an Event from the list. The event is no longer accessible afterwards.
 	 * @param pEvent The event to remove.
 	 */
-	public static synchronized void removeEvent(String pEvent) {
+	public static final void removeEvent(String pEvent) {
+		_statBlock.write();
 		_events.remove(pEvent);
+		_statBlock.release();
 	}
 	
 	/**
@@ -72,8 +95,11 @@ public abstract class Event {
 	 * @param pEvent The Event's identifier.
 	 * @return The Event-Object.
 	 */
-	public static Event getEvent(String pEvent) {
-		return _events.get(pEvent);
+	public static final Event<?> getEvent(String pEvent) {
+		_statBlock.read();
+		Event<?> ev = _events.get(pEvent);
+		_statBlock.release();
+		return ev;
 	}
 	
 	/**
@@ -81,8 +107,11 @@ public abstract class Event {
 	 * @param pEvent The identifier to check.
 	 * @return True if the identifier is already registered, else false.
 	 */
-	public static boolean hasEvent(String pEvent) {
-		return _events.containsKey(pEvent);
+	public static final boolean hasEvent(String pEvent) {
+		_statBlock.read();
+		boolean bl = _events.containsKey(pEvent);
+		_statBlock.release();
+		return bl;
 	}
 	
 	/**
@@ -91,7 +120,8 @@ public abstract class Event {
 	 * @param pOrder The stage in which the reaction should be executed. -1 for the pre-stage, 0 for the normal stage and 1 for post-stage.
 	 * @param pReact
 	 */
-	public synchronized void registerReaction(String pId, int pOrder, Reaction pReact) {
+	public final void registerReaction(String pId, int pOrder, Reaction pReact) {
+		_block.write();
 		Hashtable<String, Reaction> rea;
 		rea = getReactions(pOrder);
 		if (rea.containsKey(pId)) {
@@ -100,9 +130,15 @@ public abstract class Event {
 		else {
 			rea.put(pId, pReact);
 		}
+		_block.release();
 	}
 	
-	public void registerReaction(String pId, Reaction pReact) {
+	/**
+	 * Ref. registerReaction(String pId, 0, Reaction pReact)
+	 * @param pId
+	 * @param pReact
+	 */
+	public final void registerReaction(String pId, Reaction pReact) {
 		registerReaction(pId, 0, pReact);
 	}
 	
@@ -111,7 +147,7 @@ public abstract class Event {
 	 * @param pOrder -1 for the pre-reactions, 0 for the normal reactions and 1 for post-reactions.
 	 * @return The hashtable containing all reactions.
 	 */
-	private Hashtable<String, Reaction> getReactions(int pOrder) {
+	private final Hashtable<String, Reaction> getReactions(int pOrder) {
 		switch (pOrder) {
 		case -1:
 			return _reactionsPre;
@@ -129,13 +165,19 @@ public abstract class Event {
 	 * @param pId The reaction's identifier.
 	 * @param pOrder The stage from which the reaction should be removed. -1 for pre, 0 for normal and 1 for post stage.
 	 */
-	public synchronized void removeReaction(String pId, int pOrder) {
+	public final void removeReaction(String pId, int pOrder) {
+		_block.write();
 		Hashtable<String, Reaction> rea;
 		rea = getReactions(pOrder);
 		rea.remove(pId);
+		_block.release();
 	}
 	
-	public void removeReaction(String pId)
+	/**
+	 * Ref. removeReaction(String pId, 0)
+	 * @param pId
+	 */
+	public final void removeReaction(String pId)
 	{
 		removeReaction(pId, 0);
 	}
@@ -146,10 +188,14 @@ public abstract class Event {
 	 * @param pOrder The stage to check. -1 for pre, 0 for normal and 1 for post stage.
 	 * @return True if the reaction is already registered, else false.
 	 */
-	public boolean hasReaction(String pId, int pOrder) {
+	public final boolean hasReaction(String pId, int pOrder) {
+		_block.read();
+		boolean bl;
 		Hashtable<String, Reaction> rea;
 		rea = getReactions(pOrder);
-		return rea.containsKey(pId);
+		bl = rea.containsKey(pId);
+		_block.release();
+		return bl;
 	}
 	
 	/**
@@ -157,8 +203,9 @@ public abstract class Event {
 	 * @param pObj An array of parameters that might be needed by the reactions.
 	 * @return A list of all exceptions that occurred during the execution.
 	 */
-	public List<Exception> run(Object... pObj) {
-		final List<Exception> es = new ArrayList<Exception>(); // List that collects the thrown exceptions.
+	public final Collection<Exception> run(T pObj) {
+		_block.write();
+		final Collection<Exception> es = Collections.synchronizedList(new LinkedList<Exception>()); // List that collects the thrown exceptions.
 		_thr = new ManagedThread() {
 			public void run() {
 				// Execute the specific stages one after another
@@ -168,11 +215,12 @@ public abstract class Event {
 			}
 		};
 		_thr.start(_priority);
+		_block.release();
 		return es;
 	}
 	
-	private List<Exception> runReactions(Hashtable<String, Reaction> pRea, Object[] pArgs) {
-		List<Exception> exceptions = new ArrayList<Exception>(); // List of all thrown exceptions
+	private final Collection<Exception> runReactions(Hashtable<String, Reaction> pRea, T pArgs) {
+		Collection<Exception> exceptions = Collections.synchronizedList(new LinkedList<Exception>()); // List of all thrown exceptions
 		Queue<ManagedThread> thrs = new LinkedList<ManagedThread>(); // List of all Threads that were started to run the reactions parallel
 		Enumeration<String> en = pRea.keys(); // The list of keys in the hashtable to iterate over
 		
@@ -188,6 +236,7 @@ public abstract class Event {
 					}
 				}
 			};
+			thr.setName(rea);
 			thr.start(pRea.get(rea).getPriority());
 			thrs.add(thr); // Add the thread to the list
 		}
@@ -201,19 +250,25 @@ public abstract class Event {
 				try {
 					thr.join(timeLeft); // Wait max timeLeft MILLIS for the thread to complete
 				} catch (InterruptedException e) { // I hope this doesn't happen. At least it shouldn't in a normal running program.
-					if (Event.hasEvent(e.getClass().getName())) {
-						Event.getEvent(e.getClass().getName()).run(e); // Eventbased errorhandling
-					}
-					else
-					{
-						e.printStackTrace(); // If the eventbased errorhandling is not implemented
-					}
+					try {
+						@SuppressWarnings("unchecked")
+						Event<InterruptedException> ev = (Event<InterruptedException>) Event.getEvent(e.getClass().getName());
+						ev.run(e);
+					} catch (ClassCastException e1) {
+						Log.logError(e1);
+						Log.logError(e);
+						Log.crash();
+					} catch (NullPointerException e1) {
+						Log.logError(e1);
+						Log.logError(e);
+						Log.crash();
+					} // Eventbased errorhandling
 				}
 			}
 			
 			// Interrupt all threads that didn't finish on time (Can't wait forever)
 			if (thr.isAlive()) {
-				exceptions.add(new TimeoutException("Reaction " + thr.getIdentifier() + " timed out after " + _timeout + " millis."));
+				exceptions.add(new TimeoutException("Reaction " + thr.getName() + " timed out after " + _timeout + " millis."));
 				thr.interrupt();
 			}
 		}
@@ -225,7 +280,7 @@ public abstract class Event {
 	 * Pauses this thread until all reactions are completed or timed-out.
 	 * @throws InterruptedException
 	 */
-	public void waitForCompletion() throws InterruptedException {
+	public final void waitForCompletion() throws InterruptedException {
 		_thr.join();
 	}
 	
@@ -234,7 +289,27 @@ public abstract class Event {
 	 * @param pMillis The maximum amount of time to wait in MILLIS.
 	 * @throws InterruptedException
 	 */
-	public void waitForCompletion(long pMillis) throws InterruptedException {
+	public final void waitForCompletion(long pMillis) throws InterruptedException {
 		_thr.join(pMillis);
+	}
+	
+	/**
+	 * @author Alexander Otto
+	 *
+	 */
+	public abstract class Reaction {
+		
+		/**
+		 * @param pArgs
+		 * @throws Exception 
+		 */
+		public abstract void react(T pArgs) throws Exception;
+		
+		/**
+		 * @return 0
+		 */
+		public int getPriority() {
+			return 0;
+		}
 	}
 }

@@ -25,7 +25,7 @@ import modularity.events.errors.SecurityErrorEvent;
  * @author Alexander
  *
  */
-public class FileManager {
+public class FileManagerOld {
 
 	/**
 	 * @param pPath

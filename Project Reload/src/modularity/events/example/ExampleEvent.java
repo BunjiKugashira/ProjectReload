@@ -3,33 +3,22 @@
  */
 package modularity.events.example;
 
-import modularity.events.NonThrowingEvent;
+import modularity.events.Event;
 
 /**
  * @author Alexander
  *
  */
-public class ExampleEvent extends NonThrowingEvent {
+public class ExampleEvent extends Event<Object> {
 	/**
-	 *
+	 * @param pEvent
 	 */
-	public static final EventContainer container = new EventContainer();
-
-	/**
-	 *
-	 */
-	public ExampleEvent() {
-		super(container);
-		_joinTimer = 5000; // Set this to what you think is appropriate or just
-							// leave it away.
+	private ExampleEvent() {
+		super("ExampleEvent");
 	}
 
 	/**
-	 * @param pEv
+	 *
 	 */
-	protected ExampleEvent(final EventContainer pEv) {
-		super(pEv);
-		_joinTimer = 5000; // see ExampleEvent()
-	}
-
+	public static final ExampleEvent EVENT = new ExampleEvent();
 }

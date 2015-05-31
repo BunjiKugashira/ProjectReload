@@ -3,30 +3,25 @@
  */
 package modularity.events.compression;
 
+import modularity.events.Event;
+
 /**
  * @author Alexander
  *
  */
-public class NeedDecompressionEvent extends NeedCompressionEvent {
+public class NeedDecompressionEvent extends Event<NeedDecompressionEvent.Message> {
+	/**
+	 * @param pEvent
+	 */
+	public NeedDecompressionEvent() {
+		super("NeedDecompressionEvent");
+	}
+	public class Message {
+		public String _message;
+	}
 	/**
 	 *
 	 */
-	public static final EventContainer container = new EventContainer();
-
-	/**
-	 * @param pEv
-	 * @param pMessage
-	 */
-	protected NeedDecompressionEvent(final EventContainer pEv,
-			final String pMessage) {
-		super(pEv, pMessage);
-	}
-
-	/**
-	 * @param pMessage
-	 */
-	public NeedDecompressionEvent(final String pMessage) {
-		super(container, pMessage);
-	}
+	public static final NeedDecompressionEvent EVENT = new NeedDecompressionEvent();
 
 }

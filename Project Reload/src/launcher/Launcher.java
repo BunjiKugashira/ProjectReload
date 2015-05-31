@@ -7,7 +7,7 @@ import error.Log;
 import modularity.ReactionOld;
 import modularity.events.EventOld;
 import modularity.events.example.ExampleEvent;
-import util.meta.FileManager;
+import util.meta.FileManagerOld;
 
 /**
  * @author Alexander
@@ -22,8 +22,8 @@ public class Launcher {
 	 */
 	public static void main(final String[] args) {
 		// new ExampleEventListener();
-		FileManager.createDirectory(FileManager.getPath("TestPath01"));
-		FileManager.loadFiles(FileManager
+		FileManagerOld.createDirectory(FileManagerOld.getPath("TestPath01"));
+		FileManagerOld.loadFiles(FileManagerOld
 				.getPath("bin\\modularity\\eventListener\\example"));
 		System.out.println("Registering new Events.");
 		for (int i = 0; i < 4; i++) {

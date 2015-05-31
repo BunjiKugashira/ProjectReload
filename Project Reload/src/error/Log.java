@@ -15,6 +15,6 @@ public class Log {
 	}
 	
 	public static void crash() {
-		// TODO crash the program
+		Runtime.getRuntime().exit(1);
 	}
 }

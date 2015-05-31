@@ -3,52 +3,29 @@
  */
 package modularity.events.compression;
 
-import modularity.events.NonThrowingEvent;
+import modularity.events.Event;
 
 /**
  * @author Alexander
  *
  */
-public class NeedCompressionEvent extends NonThrowingEvent {
+public class NeedCompressionEvent extends Event<NeedCompressionEvent.Message> {
+	/**
+	 * @author Alexander
+	 *
+	 */
+	public class Message {
+		public String _message;
+	}
+	/**
+	 * @param pEvent
+	 */
+	public NeedCompressionEvent() {
+		super("NeedCompressionEvent");
+	}
+
 	/**
 	 *
 	 */
-	public static final EventContainer container = new EventContainer();
-	private String _message;
-
-	/**
-	 * @param pEv
-	 * @param pMessage
-	 *
-	 */
-	protected NeedCompressionEvent(final EventContainer pEv,
-			final String pMessage) {
-		super(pEv);
-		setMessage(pMessage);
-	}
-
-	/**
-	 * @param pMessage
-	 *
-	 */
-	public NeedCompressionEvent(final String pMessage) {
-		super(container);
-		setMessage(pMessage);
-	}
-
-	/**
-	 * @return the _message
-	 */
-	public String getMessage() {
-		return _message;
-	}
-
-	/**
-	 * @param pMessage
-	 *            the _message to set
-	 */
-	public void setMessage(final String pMessage) {
-		_message = pMessage;
-	}
-
+	public static final NeedCompressionEvent EVENT = new NeedCompressionEvent();
 }
