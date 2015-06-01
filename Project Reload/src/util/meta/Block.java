@@ -117,6 +117,12 @@ public class Block {
 				}
 			}
 		}
+		if (pWriting) {
+			_waitingForWriting.remove(ManagedThread.currentThread());
+		}
+		else {
+			_waitingForReading.remove(ManagedThread.currentThread());
+		}
 		return false;
 	}
 	

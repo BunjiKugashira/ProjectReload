@@ -184,7 +184,31 @@ public class BlockTest {
 	 */
 	@Test
 	public void testRelease() {
-		fail("Not yet implemented"); // TODO
+		ManagedThread thr = new ManagedThread() {
+			public void run() {
+				_bl.read();
+				try {
+					sleep(TIMEOUT*2);
+				} catch (InterruptedException e) {
+					fail(e.toString());
+				}
+				_bl.release();
+			}
+		};
+		thr.start(0);
+		try {
+			ManagedThread.sleep(TIMEOUT/2);
+		} catch (InterruptedException e) {
+			fail(e.toString());
+		}
+		assertFalse(_bl.write(TIMEOUT));
+		try {
+			ManagedThread.sleep(TIMEOUT*2);
+		} catch (InterruptedException e) {
+			fail(e.toString());
+		}
+		assertTrue(_bl.write(TIMEOUT));
+		_bl.release();
 	}
 
 }
