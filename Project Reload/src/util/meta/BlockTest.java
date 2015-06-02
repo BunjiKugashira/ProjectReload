@@ -46,7 +46,22 @@ public class BlockTest {
 	 */
 	@Test
 	public void testReadInt() {
-		fail("Not yet implemented"); // TODO
+		_bl.write();
+		_memory = 0;
+		new Thread() {
+			public void run() {
+				if (_bl.read(TIMEOUT)) {
+					_memory = 1;
+					_bl.release();
+				};
+			}
+		}.start();
+		try {
+			Thread.sleep(TIMEOUT);
+		} catch (InterruptedException e) {
+			fail(e.toString());
+		}
+		assertTrue(_memory == 0);
 	}
 
 	/**
@@ -115,7 +130,22 @@ public class BlockTest {
 	 */
 	@Test
 	public void testWriteInt() {
-		fail("Not yet implemented"); // TODO
+		_bl.read();
+		_memory = 0;
+		new Thread() {
+			public void run() {
+				if (_bl.write(TIMEOUT)) {
+					_memory = 1;
+					_bl.release();
+				};
+			}
+		}.start();
+		try {
+			Thread.sleep(TIMEOUT);
+		} catch (InterruptedException e) {
+			fail(e.toString());
+		}
+		assertTrue(_memory == 0);
 	}
 
 	/**

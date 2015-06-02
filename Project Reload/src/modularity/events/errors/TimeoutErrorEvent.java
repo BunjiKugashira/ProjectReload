@@ -5,43 +5,39 @@ package modularity.events.errors;
 
 import java.util.concurrent.TimeoutException;
 
-import modularity.ReactionOld;
-import modularity.events.EventOld;
+import error.Log;
+import modularity.events.Event;
 
 /**
  * @author Alexander
  *
  */
-public class TimeoutErrorEvent extends ErrorEvent {
+public class TimeoutErrorEvent extends Event<TimeoutException> {
 	/**
 	 *
 	 */
-	public static final EventContainer container = new EventContainer();
+	public static final TimeoutErrorEvent EVENT = new TimeoutErrorEvent();
 
 	/**
+	 * Instantiates a new error event. TODO comment
+	 *
 	 * @param pEv
+	 *
 	 * @param pExc
+	 *            the exc
 	 */
-	protected TimeoutErrorEvent(final EventContainer pEv,
-			final TimeoutException pExc) {
-		super(pEv, pExc);
+	protected TimeoutErrorEvent() {
+		super(TimeoutException.class.getName());
+		registerEventspecificReactions();
 	}
 
-	/**
-	 * @param pExc
-	 */
-	public TimeoutErrorEvent(final TimeoutException pExc) {
-		super(container, pExc);
-	}
-
-	@Override
 	protected void registerEventspecificReactions() {
-		container.registerReaction("ErrorEvent.throwException", new ReactionOld() {
+		EVENT.registerReaction("ErrorEvent.throwException", 2, EVENT.new Reaction() {
 
 			@Override
-			public void react(final EventOld pThis) {
-				getException().printStackTrace();
+			public void react(final TimeoutException pExc) {
+				Log.logError(pExc);
 			}
-		}, 2);
+		});
 	}
 }

@@ -3,21 +3,18 @@
  */
 package modularity.events.errors;
 
-import modularity.ReactionOld;
-import modularity.events.EventOld;
-import modularity.events.NonThrowingEvent;
+import error.Log;
+import modularity.events.Event;
 
 /**
  * @author Alexander
  *
  */
-public abstract class ErrorEvent extends NonThrowingEvent {
+public class ErrorEvent extends Event<Exception> {
 	/**
 	 *
 	 */
-	public static final EventContainer container = new EventContainer();
-	private final EventContainer _cont;
-	private final Exception _exc;
+	public static final ErrorEvent EVENT = new ErrorEvent();
 
 	/**
 	 * Instantiates a new error event. TODO comment
@@ -27,39 +24,18 @@ public abstract class ErrorEvent extends NonThrowingEvent {
 	 * @param pExc
 	 *            the exc
 	 */
-	protected ErrorEvent(final EventContainer pEv, final Exception pExc) {
-		super(pEv);
-		_cont = pEv;
-		_exc = pExc;
+	protected ErrorEvent() {
+		super(Exception.class.getName());
+		registerEventspecificReactions();
 	}
 
-	/**
-	 * Instantiates a new error event. TODO comment
-	 *
-	 * @param pExc
-	 *            the exc
-	 */
-	public ErrorEvent(final Exception pExc) {
-		super(container);
-		_cont = container;
-		_exc = pExc;
-	}
-
-	/**
-	 * @return the _exc
-	 */
-	public Exception getException() {
-		return _exc;
-	}
-
-	@Override
 	protected void registerEventspecificReactions() {
-		_cont.registerReaction("ErrorEvent.throwException", new ReactionOld() {
+		EVENT.registerReaction("ErrorEvent.throwException", 2, EVENT.new Reaction() {
 
 			@Override
-			public void react(final EventOld pThis) {
-				getException().printStackTrace();
+			public void react(final Exception pExc) {
+				Log.logError(pExc);
 			}
-		}, 2);
+		});
 	}
 }

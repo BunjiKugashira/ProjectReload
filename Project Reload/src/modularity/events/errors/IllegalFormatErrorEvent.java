@@ -5,43 +5,39 @@ package modularity.events.errors;
 
 import java.util.IllegalFormatException;
 
-import modularity.ReactionOld;
-import modularity.events.EventOld;
+import error.Log;
+import modularity.events.Event;
 
 /**
  * @author Alexander
  *
  */
-public class IllegalFormatErrorEvent extends ErrorEvent {
+public class IllegalFormatErrorEvent extends Event<IllegalFormatException> {
 	/**
 	 *
 	 */
-	public static final EventContainer container = new EventContainer();
+	public static final IllegalFormatErrorEvent EVENT = new IllegalFormatErrorEvent();
 
 	/**
+	 * Instantiates a new error event. TODO comment
+	 *
 	 * @param pEv
+	 *
 	 * @param pExc
+	 *            the exc
 	 */
-	protected IllegalFormatErrorEvent(final EventContainer pEv,
-			final IllegalFormatException pExc) {
-		super(pEv, pExc);
+	protected IllegalFormatErrorEvent() {
+		super(IllegalFormatException.class.getName());
+		registerEventspecificReactions();
 	}
 
-	/**
-	 * @param pExc
-	 */
-	public IllegalFormatErrorEvent(final IllegalFormatException pExc) {
-		super(container, pExc);
-	}
-
-	@Override
 	protected void registerEventspecificReactions() {
-		container.registerReaction("ErrorEvent.throwException", new ReactionOld() {
+		EVENT.registerReaction("ErrorEvent.throwException", 2, EVENT.new Reaction() {
 
 			@Override
-			public void react(final EventOld pThis) {
-				getException().printStackTrace();
+			public void react(final IllegalFormatException pExc) {
+				Log.logError(pExc);
 			}
-		}, 2);
+		});
 	}
 }

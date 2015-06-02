@@ -5,30 +5,39 @@ package modularity.events.errors;
 
 import java.io.FileNotFoundException;
 
+import modularity.events.Event;
+import error.Log;
+
 /**
  * @author Alexander
  *
  */
-public class FileNotFoundErrorEvent extends ErrorEvent {
+public class FileNotFoundErrorEvent extends Event<FileNotFoundException> {
 	/**
 	 *
 	 */
-	public static final EventContainer container = new EventContainer();
+	public static final FileNotFoundErrorEvent EVENT = new FileNotFoundErrorEvent();
 
 	/**
+	 * Instantiates a new error event. TODO comment
+	 *
 	 * @param pEv
+	 *
 	 * @param pExc
+	 *            the exc
 	 */
-	protected FileNotFoundErrorEvent(final EventContainer pEv,
-			final FileNotFoundException pExc) {
-		super(pEv, pExc);
+	protected FileNotFoundErrorEvent() {
+		super(FileNotFoundException.class.getName());
+		registerEventspecificReactions();
 	}
 
-	/**
-	 * @param pExc
-	 */
-	public FileNotFoundErrorEvent(final FileNotFoundException pExc) {
-		super(container, pExc);
-	}
+	protected void registerEventspecificReactions() {
+		EVENT.registerReaction("ErrorEvent.throwException", 2, EVENT.new Reaction() {
 
+			@Override
+			public void react(final FileNotFoundException pExc) {
+				Log.logError(pExc);
+			}
+		});
+	}
 }

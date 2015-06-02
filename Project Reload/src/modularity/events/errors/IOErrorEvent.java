@@ -5,42 +5,39 @@ package modularity.events.errors;
 
 import java.io.IOException;
 
-import modularity.ReactionOld;
-import modularity.events.EventOld;
+import error.Log;
+import modularity.events.Event;
 
 /**
  * @author Alexander
  *
  */
-public class IOErrorEvent extends ErrorEvent {
+public class IOErrorEvent extends Event<IOException> {
 	/**
 	 *
 	 */
-	public static final EventContainer container = new EventContainer();
+	public static final IOErrorEvent EVENT = new IOErrorEvent();
 
 	/**
+	 * Instantiates a new error event. TODO comment
+	 *
 	 * @param pEv
+	 *
 	 * @param pExc
+	 *            the exc
 	 */
-	protected IOErrorEvent(final EventContainer pEv, final IOException pExc) {
-		super(pEv, pExc);
+	protected IOErrorEvent() {
+		super(IOException.class.getName());
+		registerEventspecificReactions();
 	}
 
-	/**
-	 * @param pExc
-	 */
-	public IOErrorEvent(final IOException pExc) {
-		super(container, pExc);
-	}
-
-	@Override
 	protected void registerEventspecificReactions() {
-		container.registerReaction("ErrorEvent.throwException", new ReactionOld() {
+		EVENT.registerReaction("ErrorEvent.throwException", 2, EVENT.new Reaction() {
 
 			@Override
-			public void react(final EventOld pThis) {
-				getException().printStackTrace();
+			public void react(final IOException pExc) {
+				Log.logError(pExc);
 			}
-		}, 2);
+		});
 	}
 }
