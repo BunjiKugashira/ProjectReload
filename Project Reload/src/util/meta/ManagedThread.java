@@ -117,7 +117,12 @@ public class ManagedThread implements Runnable {
 	 * @param pTimeout
 	 */
 	public static void sleep(int pMillis) throws InterruptedException {
-		Thread.sleep(pMillis);
+		if (pMillis == -1) {
+			sleep();
+		}
+		else {
+			Thread.sleep(pMillis);
+		}
 	}
 
 	/**
