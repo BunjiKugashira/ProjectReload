@@ -23,7 +23,7 @@ import org.junit.Test;
  */
 public class PrioritySequentialLinkedQueueTest {
 
-	private static final int SIZE = 10;
+	private static final int SIZE = 1000;
 	private Object zero = new Object();
 	private Object one = new Object();
 	private Object two = new Object();

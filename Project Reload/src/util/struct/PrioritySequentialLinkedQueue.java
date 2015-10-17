@@ -4,6 +4,7 @@
 package util.struct;
 
 import java.io.Serializable;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -274,18 +275,22 @@ public class PrioritySequentialLinkedQueue<T> implements Iterable<T>, Queue<T>, 
 	@Override
 	public <A> A[] toArray(A[] a) {
 		T[] arr = toArray();
-		if (arr.length > a.length){
-			return (A[]) arr;
+		A[] aarr = a;
+		if (arr.length > aarr.length){
+			aarr = (A[]) new Object[arr.length];
 		}
-		else {
-			for (int i = 0; i < arr.length; i++) {
+		for (int i = 0; i < arr.length; i++) {
+			try {
 				a[i] = (A)arr[i];
 			}
-			for (int i = arr.length; i < a.length; i++) {
-				a[i] = null;
+			catch (ClassCastException e) {
+				throw new ArrayStoreException();
 			}
-			return a;
 		}
+		for (int i = arr.length; i < a.length; i++) {
+			a[i] = null;
+		}
+		return a;
 	}
 
 	/* (non-Javadoc)
