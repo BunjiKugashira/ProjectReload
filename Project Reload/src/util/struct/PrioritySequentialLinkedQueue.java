@@ -3,24 +3,41 @@
  */
 package util.struct;
 
-import java.lang.reflect.Array;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Queue;
 
 /**
  * @author Alexander
+ * @param <T> 
  *
  */
-public class PrioritySequentialLinkedQueue<T> implements Iterable<T>, Queue<T> {
-	private class LinkableNode {
+public class PrioritySequentialLinkedQueue<T> implements Iterable<T>, Queue<T>, Serializable, Collection<T> {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -4656219768455626632L;
+	private static class DefaultComparator<T> implements Comparator<T> {
+		@SuppressWarnings("unchecked")
+		public int compare(T x, T y) {
+			try {
+				return ((Comparable<T>)x).compareTo(y);
+			}
+			catch (ClassCastException e) {
+				throw e;
+			}
+        }
+    }
+	private class LinkableNode implements Comparable<T> {
 		public LinkableNode previous;
 		public LinkableNode next;
 		public int arrayPosition;
-		public int priority;
-		public T container;
+		public final int priority;
+		public final T container;
 		
 		public LinkableNode(T e, int pPriority, int pArrayPosition) {
 			previous = null;
@@ -29,24 +46,85 @@ public class PrioritySequentialLinkedQueue<T> implements Iterable<T>, Queue<T> {
 			priority = pPriority;
 			container = e;
 		}
+
+		/* (non-Javadoc)
+		 * @see java.lang.Comparable#compareTo(java.lang.Object)
+		 */
+		@SuppressWarnings("unchecked")
+		@Override
+		public int compareTo(Object arg0) {
+			try {
+				return _cmp.compare(container, ((LinkableNode)arg0).container);
+			}
+			catch (ClassCastException e) {
+				return (priority - ((LinkableNode)arg0).priority) % 1;
+			}
+		}
 	}
+	private Comparator<T> _cmp;
 	private ArrayList<LinkableNode> _tree;
 	private LinkableNode _firstElement;
 	private LinkableNode _lastElement;
 	private int _size;
 	private float _priorityRatio;
 	private float _lastRatio;
-	public int defaultPriority;
 	/**
+	 * The default priority that each element has if no priority is specified. The program-given default is 0.
+	 */
+	public int defaultPriority;
+	
+	/**
+	 * @param pPriorityRatio The ratio you get by dividing (number of elements taken from the priority queue) / (number of elements taken from the normal queue). The value should be between 0 and 1. Given the number 0 the queue will behave like a normal queue, given the number 1 the queue will behave like a normal priority queue.
 	 * 
 	 */
 	public PrioritySequentialLinkedQueue(float pPriorityRatio) {
+		if (pPriorityRatio < 0 || pPriorityRatio > 1) {
+			throw new IllegalArgumentException("pPriorityRatio must be between 0 and 1.");
+		}
 		_tree = new ArrayList<LinkableNode>();
 		_firstElement = null;
 		_lastElement = null;
 		_priorityRatio = pPriorityRatio;
 		_lastRatio = _priorityRatio;
 		defaultPriority = 0;
+		_cmp = new DefaultComparator<T>();
+	}
+	
+
+	/**
+	 * @param pComp
+	 * @param pPriorityRatio
+	 */
+	public PrioritySequentialLinkedQueue(Comparator<T> pComp, float pPriorityRatio) {
+		if (pPriorityRatio < 0 || pPriorityRatio > 1) {
+			throw new IllegalArgumentException("pPriorityRatio must be between 0 and 1.");
+		}
+		_tree = new ArrayList<LinkableNode>();
+		_firstElement = null;
+		_lastElement = null;
+		_priorityRatio = pPriorityRatio;
+		_lastRatio = _priorityRatio;
+		defaultPriority = 0;
+		_cmp = pComp;
+	}
+
+	/**
+	 * @param pCollection 
+	 * @param pPriorityRatio 
+	 */
+	public PrioritySequentialLinkedQueue(Collection<T> pCollection, float pPriorityRatio) {
+		if (pPriorityRatio < 0 || pPriorityRatio > 1) {
+			throw new IllegalArgumentException("pPriorityRatio must be between 0 and 1.");
+		}
+		_tree = new ArrayList<LinkableNode>();
+		_firstElement = null;
+		_lastElement = null;
+		_priorityRatio = pPriorityRatio;
+		_lastRatio = _priorityRatio;
+		defaultPriority = 0;
+		_cmp = new DefaultComparator<T>();
+		
+		addAll(pCollection);
 	}
 
 	/* (non-Javadoc)
@@ -54,13 +132,20 @@ public class PrioritySequentialLinkedQueue<T> implements Iterable<T>, Queue<T> {
 	 */
 	@Override
 	public boolean addAll(Collection<? extends T> c) {
+		if (c == this) {
+			throw new IllegalArgumentException("You can't add a queue to itself.");
+		}
 		boolean success = true;
+		boolean changed = false;
 		for (T o : c) {
-			if (!add(o)) {
+			if (add(o)) {
+				changed = true;
+			}
+			else {
 				success = false;
 			}
 		}
-		return success;
+		return changed && success;
 	}
 
 	/* (non-Javadoc)
@@ -78,13 +163,12 @@ public class PrioritySequentialLinkedQueue<T> implements Iterable<T>, Queue<T> {
 	/* (non-Javadoc)
 	 * @see java.util.Collection#contains(java.lang.Object)
 	 */
-	@SuppressWarnings("unchecked")
 	@Override
 	public boolean contains(Object o) {
 		// Iterate over the elements and compare
 		LinkableNode i = _firstElement;
 		while(i != null) {
-			if (i == o) {
+			if (i.container.equals(o)) {
 				return true;
 			}
 			i = i.next;
@@ -120,7 +204,7 @@ public class PrioritySequentialLinkedQueue<T> implements Iterable<T>, Queue<T> {
 	public boolean remove(Object o) {
 		LinkableNode i = _firstElement;
 		while (i != null) {
-			if (i.container == o) {
+			if (i.container.equals(o)) {
 				removeNode(i);
 				return true;
 			}
@@ -134,10 +218,10 @@ public class PrioritySequentialLinkedQueue<T> implements Iterable<T>, Queue<T> {
 	 */
 	@Override
 	public boolean removeAll(Collection<?> c) {
-		boolean success = true;
+		boolean success = false;
 		for (Object o : c) {
-			if (!remove(o)) {
-				success = false;
+			while (remove(o)) {
+				success = true;
 			}
 		}
 		return success;
@@ -149,13 +233,15 @@ public class PrioritySequentialLinkedQueue<T> implements Iterable<T>, Queue<T> {
 	@Override
 	public boolean retainAll(Collection<?> c) {
 		LinkableNode i = _firstElement;
+		boolean changed = false;
 		while (i != null) {
 			if (!c.contains(i.container)) {
 				removeNode(i);
+				changed = true;
 			}
 			i = i.next;
 		}
-		return true;
+		return changed;
 	}
 
 	/* (non-Javadoc)
@@ -188,14 +274,18 @@ public class PrioritySequentialLinkedQueue<T> implements Iterable<T>, Queue<T> {
 	@Override
 	public <A> A[] toArray(A[] a) {
 		T[] arr = toArray();
-		A[] aarr;
-		try {
-			aarr = (A[]) arr;
+		if (arr.length > a.length){
+			return (A[]) arr;
 		}
-		catch(ClassCastException e) {
-			return null;
+		else {
+			for (int i = 0; i < arr.length; i++) {
+				a[i] = (A)arr[i];
+			}
+			for (int i = arr.length; i < a.length; i++) {
+				a[i] = null;
+			}
+			return a;
 		}
-		return aarr;
 	}
 
 	/* (non-Javadoc)
@@ -206,6 +296,12 @@ public class PrioritySequentialLinkedQueue<T> implements Iterable<T>, Queue<T> {
 		return add(e, defaultPriority);
 	}
 	
+	/**
+	 * @see PrioritySequentialLinkedQueue#add(Object)
+	 * @param e The element that will be added to the queue.
+	 * @param priority The priority that will be given to the added element.
+	 * @return true because adding an element can't fail. (At least it shouldn't)
+	 */
 	public boolean add(T e, int priority) {
 		return offer(e, priority);
 	}
@@ -229,22 +325,32 @@ public class PrioritySequentialLinkedQueue<T> implements Iterable<T>, Queue<T> {
 		return offer(e, defaultPriority);
 	}
 	
+	/**
+	 * @see PrioritySequentialLinkedQueue#offer(Object)
+	 * @param e The object that is being offered to the queue.
+	 * @param priority The priority that will be assigned to the element.
+	 * @return true because offering an object to this queue can't fail.
+	 */
 	public boolean offer(T e, int priority) {
-		_size++;
+		if (e == null) {
+			throw new NullPointerException();
+		}
 		if (isEmpty()) {
-			_lastElement = new LinkableNode(e, priority, _size - 1);
+			_lastElement = new LinkableNode(e, priority, _size);
 			_firstElement = _lastElement;
 			_tree.add(_lastElement);
 		}
 		else {
-			_lastElement.next = new LinkableNode(e, priority, _size - 1);
+			_lastElement.next = new LinkableNode(e, priority, _size);
+			_lastElement.next.previous = _lastElement;
 			_lastElement = _lastElement.next;
 			_tree.add(_lastElement);
 			LinkableNode climber = _lastElement;
-			while (climber.arrayPosition != 0 && climber.priority > getTreeParent(climber).priority) {
+			while (climber.arrayPosition != 0 && climber.compareTo(getTreeParent(climber)) < 0) { // TODO is this > or < 0? Test!
 				switchTreeNodes(climber, getTreeParent(climber));
 			}
 		}
+		_size++;
 		return true;
 	}
 
@@ -256,7 +362,7 @@ public class PrioritySequentialLinkedQueue<T> implements Iterable<T>, Queue<T> {
 		if (isEmpty()) {
 			return null;
 		}
-		if (_lastRatio > _priorityRatio) {
+		if ((_priorityRatio < 0.5 && _lastRatio >= _priorityRatio) || _lastRatio > _priorityRatio) {
 			return _firstElement.container;
 		}
 		else {
@@ -274,7 +380,7 @@ public class PrioritySequentialLinkedQueue<T> implements Iterable<T>, Queue<T> {
 		}
 		T result = peek();
 		// Remove element
-		if (_lastRatio > _priorityRatio) {
+		if ((_priorityRatio < 0.5 && _lastRatio >= _priorityRatio) || _lastRatio > _priorityRatio) {
 			_lastRatio = _lastRatio + (0 - _priorityRatio);
 			System.out.print("0");
 			removeNode(_firstElement);
@@ -305,6 +411,7 @@ public class PrioritySequentialLinkedQueue<T> implements Iterable<T>, Queue<T> {
 	public Iterator<T> iterator() {
 		return new Iterator<T>() {
 			private LinkableNode _next = _firstElement;
+			private LinkableNode _current = null;
 			@Override
 			public boolean hasNext() {
 				return _next != null;
@@ -312,15 +419,27 @@ public class PrioritySequentialLinkedQueue<T> implements Iterable<T>, Queue<T> {
 
 			@Override
 			public T next() {
-				T e = _next.container;
-				_next = _next.next;
-				return e;
+				if (!hasNext()) {
+					throw new NoSuchElementException();
+				}
+				_current = _next;
+				_next = _current.next;
+				return _current.container;
+			}
+			
+			@Override
+			public void remove() {
+				if (_current == null) {
+					throw new IllegalStateException("remove() can only be called after next().");
+				}
+				removeNode(_current);
+				_current = null;
 			}
 		};
 	}
 	
 	private final LinkableNode getTreeParent(LinkableNode e) {
-		int pos = Math.floorDiv(e.arrayPosition, 2);
+		int pos = Math.floorDiv(e.arrayPosition - 1, 2);
 		if (pos < 0) {
 			return null;
 		}
@@ -330,16 +449,6 @@ public class PrioritySequentialLinkedQueue<T> implements Iterable<T>, Queue<T> {
 	}
 	
 	private final LinkableNode getTreeLeftChild(LinkableNode e) {
-		int pos = e.arrayPosition * 2;
-		if (pos >= _size) {
-			return null;
-		}
-		else {
-			return _tree.get(pos);
-		}
-	}
-	
-	private final LinkableNode getTreeRightChild(LinkableNode e) {
 		int pos = e.arrayPosition * 2 + 1;
 		if (pos >= _size) {
 			return null;
@@ -349,12 +458,22 @@ public class PrioritySequentialLinkedQueue<T> implements Iterable<T>, Queue<T> {
 		}
 	}
 	
+	private final LinkableNode getTreeRightChild(LinkableNode e) {
+		int pos = e.arrayPosition * 2 + 2;
+		if (pos >= _size) {
+			return null;
+		}
+		else {
+			return _tree.get(pos);
+		}
+	}
+	
 	private final void switchTreeNodes(LinkableNode e1, LinkableNode e2) {
-		_tree.set(e1.arrayPosition, e2);
-		_tree.set(e2.arrayPosition, e1);
 		int e1ArrayPosition = e1.arrayPosition;
 		e1.arrayPosition = e2.arrayPosition;
 		e2.arrayPosition = e1ArrayPosition;
+		_tree.set(e1.arrayPosition, e1);
+		_tree.set(e2.arrayPosition, e2);
 	}
 	
 	private final void removeNode(LinkableNode e) {
@@ -374,25 +493,50 @@ public class PrioritySequentialLinkedQueue<T> implements Iterable<T>, Queue<T> {
 		if (e.previous != null) {
 			e.previous.next = e.next;
 		}
-		_tree.remove(_size - 1);
+		_tree.remove(e.arrayPosition);
 		_size--;
 		// Reconstruct the tree
-		while (getTreeParent(climber) != null && climber.priority > getTreeParent(climber).priority) {
+		while (getTreeParent(climber) != null && climber.compareTo(getTreeParent(climber)) < 0) { // TODO is this > or < 0? Test!
 			switchTreeNodes(climber, getTreeParent(climber));
 		}
 		if (climber.arrayPosition < _size) {
 			LinkableNode max = null;
 			while (max != climber) {
 				max = climber;
-				if (getTreeLeftChild(climber) != null && getTreeLeftChild(climber).priority > max.priority) {
+				if (getTreeLeftChild(climber) != null && getTreeLeftChild(climber).compareTo(max) < 0) {
 					max = getTreeLeftChild(climber);
 				}
-				if (getTreeRightChild(climber) != null && getTreeRightChild(climber).priority > max.priority) {
+				if (getTreeRightChild(climber) != null && getTreeRightChild(climber).compareTo(max) < 0) {
 					max = getTreeRightChild(climber);
 				}
 				switchTreeNodes(max, climber);
 			}	
 		}
+	}
+
+	/**
+	 * @see java.util.PriorityQueue#comparator()
+	 * @return The currently used comparator.
+	 */
+	public Object comparator() {
+		return _cmp;
+	}
+	
+	/**
+	 * @param pQueue
+	 * @return A String-representation of the queue.
+	 */
+	public static String toString(PrioritySequentialLinkedQueue<?> pQueue) {
+		return pQueue.toString();
+	}
+	
+	@Override
+	public String toString() {
+		String str = "";
+		for (T element : this) {
+			str = str + element.toString();
+		}
+		return str;
 	}
 
 }
