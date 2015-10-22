@@ -351,7 +351,7 @@ public class PrioritySequentialLinkedQueue<T> implements Iterable<T>, Queue<T>, 
 			_lastElement = _lastElement.next;
 			_tree.add(_lastElement);
 			LinkableNode climber = _lastElement;
-			while (climber.arrayPosition != 0 && climber.compareTo(getTreeParent(climber)) < 0) { // TODO is this > or < 0? Test!
+			while (climber.arrayPosition != 0 && climber.compareTo(getTreeParent(climber)) < 0) {
 				switchTreeNodes(climber, getTreeParent(climber));
 			}
 		}
@@ -501,7 +501,7 @@ public class PrioritySequentialLinkedQueue<T> implements Iterable<T>, Queue<T>, 
 		_tree.remove(e.arrayPosition);
 		_size--;
 		// Reconstruct the tree
-		while (getTreeParent(climber) != null && climber.compareTo(getTreeParent(climber)) < 0) { // TODO is this > or < 0? Test!
+		while (getTreeParent(climber) != null && climber.compareTo(getTreeParent(climber)) < 0) {
 			switchTreeNodes(climber, getTreeParent(climber));
 		}
 		if (climber.arrayPosition < _size) {

@@ -17,6 +17,7 @@ import java.util.concurrent.TimeoutException;
 
 import error.Log;
 import util.meta.Block;
+import util.meta.DeadlockException;
 import util.meta.ManagedThread;
 
 /**
@@ -38,8 +39,6 @@ public class Event<T> {
 	private final Hashtable<String, Reaction> _reactionsPost;
 	private static final Hashtable<String, Event<?>> _events = new Hashtable<String, Event<?>>(); // Contains all Events + their identifier
 	private ManagedThread _thr; // The thread that's launching the reactions
-	private static Block _statBlock = new Block();
-	private Block _block;
 	
 	/**
 	 * Constructor of class Event. Creates a new event that can be operated on if you have the identifier.
@@ -48,7 +47,6 @@ public class Event<T> {
 	 * @param pTimeout The time in MILLIS that all reactions to this event get to complete. Should be greater than 0.
 	 */
 	public Event(String pEvent, int pTimeout) {
-		_block = new Block();
 		_timeout = pTimeout;
 		_reactionsPre = new Hashtable<String, Reaction>();
 		_reactions = new Hashtable<String, Reaction>();
@@ -61,7 +59,6 @@ public class Event<T> {
 	 * @param pEvent
 	 */
 	public Event(String pEvent) {
-		_block = new Block();
 		_timeout = 100;
 		_reactionsPre = new Hashtable<String, Reaction>();
 		_reactions = new Hashtable<String, Reaction>();
@@ -70,14 +67,19 @@ public class Event<T> {
 	}
 	
 	private final void registerEvent(String pEvent) {
-		_statBlock.write();
+		try {
+			Block.write(_events);
+		} catch (DeadlockException e) {
+			Log.logError(e);
+			Log.crash();
+		}
 		if (_events.containsKey(pEvent)) {
 			// TODO error
 		}
 		else {
 			_events.put(pEvent, this);
 		}
-		_statBlock.release();
+		Block.release();
 	}
 	
 	/**
@@ -85,9 +87,14 @@ public class Event<T> {
 	 * @param pEvent The event to remove.
 	 */
 	public static final void removeEvent(String pEvent) {
-		_statBlock.write();
+		try {
+			Block.write(_events);
+		} catch (DeadlockException e) {
+			Log.logError(e);
+			Log.crash();
+		}
 		_events.remove(pEvent);
-		_statBlock.release();
+		Block.release();
 	}
 	
 	/**
@@ -96,9 +103,14 @@ public class Event<T> {
 	 * @return The Event-Object.
 	 */
 	public static final Event<?> getEvent(String pEvent) {
-		_statBlock.read();
+		try {
+			Block.read(_events);
+		} catch (DeadlockException e) {
+			Log.logError(e);
+			Log.crash();
+		}
 		Event<?> ev = _events.get(pEvent);
-		_statBlock.release();
+		Block.release();
 		return ev;
 	}
 	
@@ -108,9 +120,14 @@ public class Event<T> {
 	 * @return True if the identifier is already registered, else false.
 	 */
 	public static final boolean hasEvent(String pEvent) {
-		_statBlock.read();
+		try {
+			Block.read(_events);
+		} catch (DeadlockException e) {
+			Log.logError(e);
+			Log.crash();
+		}
 		boolean bl = _events.containsKey(pEvent);
-		_statBlock.release();
+		Block.release();
 		return bl;
 	}
 	
@@ -121,7 +138,12 @@ public class Event<T> {
 	 * @param pReact
 	 */
 	public final void registerReaction(String pId, int pOrder, Reaction pReact) {
-		_block.write();
+		try {
+			Block.write(_events);
+		} catch (DeadlockException e) {
+			Log.logError(e);
+			Log.crash();
+		}
 		Hashtable<String, Reaction> rea;
 		rea = getReactions(pOrder);
 		if (rea.containsKey(pId)) {
@@ -130,7 +152,7 @@ public class Event<T> {
 		else {
 			rea.put(pId, pReact);
 		}
-		_block.release();
+		Block.release();
 	}
 	
 	/**
@@ -166,11 +188,16 @@ public class Event<T> {
 	 * @param pOrder The stage from which the reaction should be removed. -1 for pre, 0 for normal and 1 for post stage.
 	 */
 	public final void removeReaction(String pId, int pOrder) {
-		_block.write();
+		try {
+			Block.write(_events);
+		} catch (DeadlockException e) {
+			Log.logError(e);
+			Log.crash();
+		}
 		Hashtable<String, Reaction> rea;
 		rea = getReactions(pOrder);
 		rea.remove(pId);
-		_block.release();
+		Block.release();
 	}
 	
 	/**
@@ -189,12 +216,17 @@ public class Event<T> {
 	 * @return True if the reaction is already registered, else false.
 	 */
 	public final boolean hasReaction(String pId, int pOrder) {
-		_block.read();
+		try {
+			Block.read(_events);
+		} catch (DeadlockException e) {
+			Log.logError(e);
+			Log.crash();
+		}
 		boolean bl;
 		Hashtable<String, Reaction> rea;
 		rea = getReactions(pOrder);
 		bl = rea.containsKey(pId);
-		_block.release();
+		Block.release();
 		return bl;
 	}
 	
@@ -204,7 +236,12 @@ public class Event<T> {
 	 * @return A list of all exceptions that occurred during the execution.
 	 */
 	public final Collection<Exception> run(T pObj) {
-		_block.write();
+		try {
+			Block.write(_events);
+		} catch (DeadlockException e) {
+			Log.logError(e);
+			Log.crash();
+		}
 		final Collection<Exception> es = Collections.synchronizedList(new LinkedList<Exception>()); // List that collects the thrown exceptions.
 		_thr = new ManagedThread() {
 			public void run() {
@@ -215,7 +252,7 @@ public class Event<T> {
 			}
 		};
 		_thr.start(_priority);
-		_block.release();
+		Block.release();
 		return es;
 	}
 	

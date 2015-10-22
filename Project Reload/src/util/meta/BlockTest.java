@@ -5,8 +5,6 @@ package util.meta;
 
 import static org.junit.Assert.*;
 
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 
 /**
@@ -14,199 +12,99 @@ import org.junit.Test;
  *
  */
 public class BlockTest {
-	private static final int TIMEOUT = 100; // MILLIS
-	private Block _bl;
-	private int _memory;
-	/**
-	 * @throws java.lang.Exception
-	 */
-	@Before
-	public void setUp() throws Exception {
-		_bl = new Block();
+	public static int AMOUNT = 10;
+	public static int timeout = 100;
+	public int storage = 0;
+	
+	@Test
+	public void testReadThenWrite() {
+		fail("Not yet implemented.");
 	}
-
-	/**
-	 * @throws java.lang.Exception
-	 */
-	@After
-	public void tearDown() throws Exception {
+	
+	@Test
+	public void testWriteThenRead() {
+		fail("Not yet implemented.");
 	}
-
+	
+	@Test
+	public void bigAssRandomUsage() {
+		fail("Not yet implemented.");
+	}
+	
 	/**
-	 * Test method for {@link util.meta.Block#Block()}.
+	 * Test method for {@link util.meta.Block#read(java.lang.Object)}.
 	 */
 	@Test
-	public void testBlock() {
-		Block bl = new Block();
-		assertNotNull(bl);
+	public void testReadObject() {
+		ManagedThread t1 = new ManagedThread() {
+			@Override
+			public void run() {
+				System.out.println("Parallel process started.");
+				try {
+					Block.read(storage);
+				} catch (DeadlockException e) {
+					fail(e.toString());
+				}
+				storage = 1;
+				Block.release();
+			}
+		};
+		// Start with a simple lock and release
+		try {
+			Block.read(t1);
+		} catch (DeadlockException e) {
+			fail();
+		}
+		Block.release();
+		// See wether several locks can be stacked
+		for (int i = 0; i < AMOUNT; i++) {
+			try {
+				System.out.println("Blocking variable.");
+				Block.read(storage);
+			} catch (DeadlockException e) {
+				fail(e.toString());
+			}
+		}
+		storage = 0;
+		t1.start(0);
+		ManagedThread.sleep(timeout);
+		System.out.println("Finished sleeping.");
+		assertEquals(1, storage);
+		for (int i = 0; i < AMOUNT; i++) {
+			Block.release();
+		}
+		System.out.println("Finished releasing.");
+		t1.join();
+		assertEquals(1, storage);
 	}
 
 	/**
-	 * Test method for {@link util.meta.Block#read(int)}.
+	 * Test method for {@link util.meta.Block#read(java.lang.Object, int)}.
 	 */
 	@Test
-	public void testReadInt() {
-		_bl.write();
-		_memory = 0;
-		new Thread() {
-			public void run() {
-				if (_bl.read(TIMEOUT)) {
-					_memory = 1;
-					_bl.release();
-				};
-			}
-		}.start();
+	public void testReadObjectInt() {
+		storage = 0;
 		try {
-			Thread.sleep(TIMEOUT);
-		} catch (InterruptedException e) {
+			Block.write(storage);
+		} catch (DeadlockException e) {
 			fail(e.toString());
 		}
-		assertTrue(_memory == 0);
 	}
 
 	/**
-	 * Test method for {@link util.meta.Block#read()}.
+	 * Test method for {@link util.meta.Block#write(java.lang.Object)}.
 	 */
 	@Test
-	public void testRead() {
-		// Test if writing is blocked
-		_bl.read();
-		_bl.read();
-		_bl.read();
-		_memory = 0;
-		new Thread() {
-			public void run() {
-				_bl.write();
-				_memory = 1;
-				_bl.release();
-			}
-		}.start();
-		_bl.release();
-		try {
-			Thread.sleep(TIMEOUT);
-		} catch (InterruptedException e) {
-			fail(e.toString());
-		}
-		_bl.release();
-		assertTrue(_memory == 0);
-		_bl.release();
-		try {
-			Thread.sleep(TIMEOUT);
-		} catch (InterruptedException e) {
-			fail(e.toString());
-		}
-		assertTrue(_memory == 1);
-		// Test if reading is not blocked
-		_bl.read();
-		_bl.read();
-		_bl.read();
-		_memory = 0;
-		new Thread() {
-			public void run() {
-				_bl.read();
-				_memory = 1;
-				_bl.release();
-			}
-		}.start();
-		_bl.release();
-		try {
-			Thread.sleep(TIMEOUT);
-		} catch (InterruptedException e) {
-			fail(e.toString());
-		}
-		_bl.release();
-		assertTrue(_memory == 1);
-		_bl.release();
-		try {
-			Thread.sleep(TIMEOUT);
-		} catch (InterruptedException e) {
-			fail(e.toString());
-		}
-		assertTrue(_memory == 1);
+	public void testWriteObject() {
+		fail("Not yet implemented"); // TODO
 	}
 
 	/**
-	 * Test method for {@link util.meta.Block#write(int)}.
+	 * Test method for {@link util.meta.Block#write(java.lang.Object, int)}.
 	 */
 	@Test
-	public void testWriteInt() {
-		_bl.read();
-		_memory = 0;
-		new Thread() {
-			public void run() {
-				if (_bl.write(TIMEOUT)) {
-					_memory = 1;
-					_bl.release();
-				};
-			}
-		}.start();
-		try {
-			Thread.sleep(TIMEOUT);
-		} catch (InterruptedException e) {
-			fail(e.toString());
-		}
-		assertTrue(_memory == 0);
-	}
-
-	/**
-	 * Test method for {@link util.meta.Block#write()}.
-	 */
-	@Test
-	public void testWrite() {
-		// Test if writing is blocked
-		_bl.write();
-		_bl.write();
-		_bl.write();
-		_memory = 0;
-		new Thread() {
-			public void run() {
-				_bl.write();
-				_memory = 1;
-				_bl.release();
-			}
-		}.start();
-		_bl.release();
-		try {
-			Thread.sleep(TIMEOUT);
-		} catch (InterruptedException e) {
-			fail(e.toString());
-		}
-		_bl.release();
-		assertTrue(_memory == 0);
-		_bl.release();
-		try {
-			Thread.sleep(TIMEOUT);
-		} catch (InterruptedException e) {
-			fail(e.toString());
-		}
-		assertTrue(_memory == 1);
-		// Test if reading is blocked
-		_bl.write();
-		_bl.write();
-		_bl.write();
-		_memory = 0;
-		new Thread() {
-			public void run() {
-				_bl.read();
-				_memory = 1;
-				_bl.release();
-			}
-		}.start();
-		_bl.release();
-		try {
-			Thread.sleep(TIMEOUT);
-		} catch (InterruptedException e) {
-			fail(e.toString());
-		}
-		_bl.release();
-		assertTrue(_memory == 0);
-		_bl.release();
-		try {
-			Thread.sleep(TIMEOUT);
-		} catch (InterruptedException e) {
-			fail(e.toString());
-		}
-		assertTrue(_memory == 1);
+	public void testWriteObjectInt() {
+		fail("Not yet implemented"); // TODO
 	}
 
 	/**
@@ -214,31 +112,15 @@ public class BlockTest {
 	 */
 	@Test
 	public void testRelease() {
-		ManagedThread thr = new ManagedThread() {
-			public void run() {
-				_bl.read();
-				try {
-					sleep(TIMEOUT*2);
-				} catch (InterruptedException e) {
-					fail(e.toString());
-				}
-				_bl.release();
-			}
-		};
-		thr.start(0);
-		try {
-			ManagedThread.sleep(TIMEOUT/2);
-		} catch (InterruptedException e) {
-			fail(e.toString());
-		}
-		assertFalse(_bl.write(TIMEOUT));
-		try {
-			ManagedThread.sleep(TIMEOUT*2);
-		} catch (InterruptedException e) {
-			fail(e.toString());
-		}
-		assertTrue(_bl.write(TIMEOUT));
-		_bl.release();
+		fail("Not yet implemented"); // TODO
+	}
+
+	/**
+	 * Test method for {@link util.meta.Block#isDeadLocked()}.
+	 */
+	@Test
+	public void testIsDeadLocked() {
+		fail("Not yet implemented"); // TODO
 	}
 
 }

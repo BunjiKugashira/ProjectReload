@@ -4,7 +4,7 @@
 package modularity.events.connection;
 
 import modularity.events.Event;
-import util.network.connect.ConnectionOld;
+import util.network.connect.Connection;
 
 /**
  * @author Alexander
@@ -19,7 +19,7 @@ public class CommandReceivedEvent extends Event<CommandReceivedEvent.Command> {
 	}
 	public class Command {
 		public String _command;
-		public ConnectionOld _source;
+		public Connection _source;
 	}
 	/**
 	 *
