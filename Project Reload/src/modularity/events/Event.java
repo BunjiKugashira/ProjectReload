@@ -16,7 +16,7 @@ import java.util.Queue;
 import java.util.concurrent.TimeoutException;
 
 import error.Log;
-import util.meta.Block;
+import util.meta.ThreadSafeMethod;
 import util.meta.DeadlockException;
 import util.meta.ManagedThread;
 
@@ -68,7 +68,7 @@ public class Event<T> {
 	
 	private final void registerEvent(String pEvent) {
 		try {
-			Block.write(_events);
+			ThreadSafeMethod.write(_events);
 		} catch (DeadlockException e) {
 			Log.logError(e);
 			Log.crash();
@@ -79,7 +79,7 @@ public class Event<T> {
 		else {
 			_events.put(pEvent, this);
 		}
-		Block.release();
+		ThreadSafeMethod.release();
 	}
 	
 	/**
@@ -88,13 +88,13 @@ public class Event<T> {
 	 */
 	public static final void removeEvent(String pEvent) {
 		try {
-			Block.write(_events);
+			ThreadSafeMethod.write(_events);
 		} catch (DeadlockException e) {
 			Log.logError(e);
 			Log.crash();
 		}
 		_events.remove(pEvent);
-		Block.release();
+		ThreadSafeMethod.release();
 	}
 	
 	/**
@@ -104,13 +104,13 @@ public class Event<T> {
 	 */
 	public static final Event<?> getEvent(String pEvent) {
 		try {
-			Block.read(_events);
+			ThreadSafeMethod.read(_events);
 		} catch (DeadlockException e) {
 			Log.logError(e);
 			Log.crash();
 		}
 		Event<?> ev = _events.get(pEvent);
-		Block.release();
+		ThreadSafeMethod.release();
 		return ev;
 	}
 	
@@ -121,13 +121,13 @@ public class Event<T> {
 	 */
 	public static final boolean hasEvent(String pEvent) {
 		try {
-			Block.read(_events);
+			ThreadSafeMethod.read(_events);
 		} catch (DeadlockException e) {
 			Log.logError(e);
 			Log.crash();
 		}
 		boolean bl = _events.containsKey(pEvent);
-		Block.release();
+		ThreadSafeMethod.release();
 		return bl;
 	}
 	
@@ -139,7 +139,7 @@ public class Event<T> {
 	 */
 	public final void registerReaction(String pId, int pOrder, Reaction pReact) {
 		try {
-			Block.write(_events);
+			ThreadSafeMethod.write(_events);
 		} catch (DeadlockException e) {
 			Log.logError(e);
 			Log.crash();
@@ -152,7 +152,7 @@ public class Event<T> {
 		else {
 			rea.put(pId, pReact);
 		}
-		Block.release();
+		ThreadSafeMethod.release();
 	}
 	
 	/**
@@ -189,7 +189,7 @@ public class Event<T> {
 	 */
 	public final void removeReaction(String pId, int pOrder) {
 		try {
-			Block.write(_events);
+			ThreadSafeMethod.write(_events);
 		} catch (DeadlockException e) {
 			Log.logError(e);
 			Log.crash();
@@ -197,7 +197,7 @@ public class Event<T> {
 		Hashtable<String, Reaction> rea;
 		rea = getReactions(pOrder);
 		rea.remove(pId);
-		Block.release();
+		ThreadSafeMethod.release();
 	}
 	
 	/**
@@ -217,7 +217,7 @@ public class Event<T> {
 	 */
 	public final boolean hasReaction(String pId, int pOrder) {
 		try {
-			Block.read(_events);
+			ThreadSafeMethod.read(_events);
 		} catch (DeadlockException e) {
 			Log.logError(e);
 			Log.crash();
@@ -226,7 +226,7 @@ public class Event<T> {
 		Hashtable<String, Reaction> rea;
 		rea = getReactions(pOrder);
 		bl = rea.containsKey(pId);
-		Block.release();
+		ThreadSafeMethod.release();
 		return bl;
 	}
 	
@@ -237,7 +237,7 @@ public class Event<T> {
 	 */
 	public final Collection<Exception> run(T pObj) {
 		try {
-			Block.write(_events);
+			ThreadSafeMethod.write(_events);
 		} catch (DeadlockException e) {
 			Log.logError(e);
 			Log.crash();
@@ -252,7 +252,7 @@ public class Event<T> {
 			}
 		};
 		_thr.start(_priority);
-		Block.release();
+		ThreadSafeMethod.release();
 		return es;
 	}
 	
