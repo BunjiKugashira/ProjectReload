@@ -5,6 +5,7 @@ package util.meta.ThreadSafeMethod;
 
 import java.sql.Time;
 import java.time.Instant;
+import java.util.concurrent.TimeoutException;
 
 import util.meta.DeadlockException;
 
@@ -39,20 +40,33 @@ public abstract class VoidArgs<Arg> extends ThreadSafeMethod {
 
 	protected abstract void run(Arg pArg);
 	
-	public final void start(int pTimeout, Arg pArg) throws DeadlockException {
-		Instant inst = Instant.now().plusMillis(pTimeout);
+	public final void start(int pTimeout, Arg pArg) throws DeadlockException, TimeoutException {
+		Instant inst;
+		if (pTimeout > 0)
+			inst = Instant.now().plusMillis(pTimeout);
+		else
+			inst = Instant.MAX;
+		DeadlockException dexc = null;
+		TimeoutException texc = null;
 		try {
 			pre(inst);
 		} catch (DeadlockException e) {
-			throw e;
+			dexc = e;;
+		} catch (TimeoutException e) {
+			texc = e;
 		}
 		RuntimeException exc = null;
-		try {
-			run(pArg);
-		} catch (RuntimeException e) {
-			exc = e;
-		}
+		if (texc == null && dexc == null)
+			try {
+				run(pArg);
+			} catch (RuntimeException e) {
+				exc = e;
+			}
 		post();
+		if (texc != null)
+			throw texc;
+		if (dexc != null)
+			throw dexc;
 		if (exc != null)
 			throw exc;
 	}
