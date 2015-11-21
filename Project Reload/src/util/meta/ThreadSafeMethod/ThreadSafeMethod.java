@@ -297,6 +297,16 @@ abstract class ThreadSafeMethod {
 					@Override
 					public void run() {
 						_curWorking.remove(ManagedThread.currentThread());
+						if (_curWorking.isEmpty() && _fieldInfos.isEmpty() && _waiting == null) {
+							criticalStuffStat(new Runnable() {
+
+								@Override
+								public void run() {
+									_threadInfos.remove(_thr);
+								}
+								
+							});
+						}
 					}
 					
 				});				
@@ -502,5 +512,21 @@ abstract class ThreadSafeMethod {
 	protected final void post() {
 		LockManager.free(ManagedThread.currentThread(), _registered.toArray(new Field[0]));
 		_registered.clear();
+	}
+	
+	public static final boolean isEmpty() {
+		if (!LockManager.ThreadInfo._threadInfos.isEmpty()) {
+			System.out.println("Thread Infos not empty!");
+			for (ManagedThread t : LockManager.ThreadInfo._threadInfos.keySet()) {
+				System.out.println(LockManager.ThreadInfo._threadInfos.get(t).toString());
+			}
+		}
+		if (!LockManager.FieldInfo._fieldInfos.isEmpty()) {
+			System.out.println("Field Infos not empty!");
+			for (Field f : LockManager.FieldInfo._fieldInfos.keySet()) {
+				System.out.println(LockManager.FieldInfo._fieldInfos.get(f).toString());
+			}
+		}
+		return LockManager.ThreadInfo._threadInfos.isEmpty() && LockManager.FieldInfo._fieldInfos.isEmpty();
 	}
 }

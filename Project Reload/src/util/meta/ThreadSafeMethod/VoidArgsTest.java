@@ -40,6 +40,7 @@ public class VoidArgsTest {
 			protected void run(Object pArg) {
 			}
 		};
+		assertTrue(ThreadSafeMethod.isEmpty());
 		// Test sequential start
 		for (int i = 0; i < _size; i++)
 		try {
@@ -49,6 +50,7 @@ public class VoidArgsTest {
 		} catch (TimeoutException e) {
 			fail(e.toString());
 		}
+		assertTrue(ThreadSafeMethod.isEmpty());
 		// Test stacked start
 		_counter = 0;
 		for (int i = 0; i < _size; i++)
@@ -69,6 +71,19 @@ public class VoidArgsTest {
 		} catch (DeadlockException | TimeoutException e) {
 			fail (e.toString());
 		}
+		assertTrue(ThreadSafeMethod.isEmpty());
+		// Test multiple fields
+		// TODO
+		assertTrue(ThreadSafeMethod.isEmpty());
+		// Test waiting situation
+		// TODO
+		assertTrue(ThreadSafeMethod.isEmpty());
+		// Test timeout
+		// TODO
+		assertTrue(ThreadSafeMethod.isEmpty());
+		// Test deadlock
+		// TODO
+		assertTrue(ThreadSafeMethod.isEmpty());
 	}
 
 	/**
