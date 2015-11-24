@@ -10,14 +10,17 @@ import java.util.concurrent.TimeoutException;
 import org.junit.Test;
 
 import util.meta.DeadlockException;
+import util.meta.ManagedThread;
 
 /**
  * @author Alexander
  *
  */
 public class VoidArgsTest {
-	private int _size = 10;
+	private int _size = 1;
 	private int _counter = 0;
+	private int _timeout = 1000;
+	boolean _success = true;
 	/**
 	 * Test method for {@link util.meta.ThreadSafeMethod.VoidArgs#VoidArgs(util.meta.ThreadSafeMethod.ThreadSafeMethod.Field[])}.
 	 */
@@ -73,9 +76,78 @@ public class VoidArgsTest {
 		}
 		assertTrue(ThreadSafeMethod.isEmpty());
 		// Test multiple fields
-		// TODO
+		VoidArgs.Field[] fi = new VoidArgs.Field[_size];
+		for (int i = 0; i < fi.length; i++) {
+			fi[i] = new VoidArgs.Field(this, "Field " + i);
+		}
+		try {
+			new VoidArgs<Object>(fi) {
+
+				@Override
+				protected void run(Object pArg) {
+					
+				}
+				
+			}.start(-1, new Object());
+		} catch (DeadlockException | TimeoutException e) {
+			fail(e.toString());
+		}
 		assertTrue(ThreadSafeMethod.isEmpty());
 		// Test waiting situation
+		System.out.println("Waiting Situation reached!");
+		_counter = 0;
+		_success = true;
+		new ManagedThread() {
+			
+			@Override
+			public void run() {
+				try {
+					new VoidArgs<Object>(f) {
+						
+						@Override
+						protected void run(Object pArg) {
+							ManagedThread.sleep(_timeout*2);
+							assertTrue(_counter == 0);
+							_counter = 1;
+						}
+						
+					}.start(-1, new Object());
+				} catch (DeadlockException | TimeoutException e) {
+					fail(e.toString());
+				}
+			}
+			
+		}.start(0);
+		ManagedThread.sleep(_timeout);
+		ManagedThread[] thrs = new ManagedThread[_size];
+		for (int i = 0; i < _size; i++) {
+			v[i] = new VoidArgs<Object>(f) {
+
+				@Override
+				protected void run(Object pArg) {
+					assertTrue(_counter == 1);
+				}
+				
+			};
+			VoidArgs<Object> va = v[i];
+			thrs[i] = new ManagedThread() {
+				VoidArgs<Object> vtemp = va;
+				
+				@Override
+				public void run() {
+					try {
+						vtemp.start(-1, new Object());
+					} catch (DeadlockException | TimeoutException e) {
+						fail(e.toString());
+					}
+				}
+				
+			};
+			thrs[i].start(0);
+		}
+		for (ManagedThread t : thrs) {
+			t.join();
+		}
 		// TODO
 		assertTrue(ThreadSafeMethod.isEmpty());
 		// Test timeout

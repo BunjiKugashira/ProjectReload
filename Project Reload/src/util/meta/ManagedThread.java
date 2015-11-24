@@ -6,6 +6,7 @@ package util.meta;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.Hashtable;
 import java.util.Map;
 
 import javax.naming.ldap.HasControls;
@@ -17,6 +18,7 @@ import error.Log;
  *
  */
 public class ManagedThread implements Runnable {
+	private static Hashtable<Thread, ManagedThread> _threads = new Hashtable<Thread, ManagedThread>();
 	private static int _numActiveThreads = 0;
 	private static int _numSleepingThreads = 0;
 	
@@ -29,11 +31,13 @@ public class ManagedThread implements Runnable {
 	public ManagedThread(Thread pThr) {
 		_thr = pThr;
 		setPriority(0);
+		_threads.put(_thr, this);
 	}
 	
 	public ManagedThread() {
 		_thr = new Thread(this);
 		setPriority(0);
+		_threads.put(_thr, this);
 	}
 
 	/* (non-Javadoc)
@@ -100,12 +104,20 @@ public class ManagedThread implements Runnable {
 		}
 		return true;
 	}
+	
+	public static ManagedThread getManagedThread(Thread pThr) {
+		ManagedThread thr = _threads.get(pThr);
+		if (thr == null) {
+			thr = new ManagedThread(pThr);
+		}
+		return thr;
+	}
 
 	/**
 	 * @return
 	 */
 	public static ManagedThread currentThread() {
-		return new ManagedThread(Thread.currentThread());
+		return getManagedThread(Thread.currentThread());
 	}
 	
 	@Override
@@ -137,17 +149,18 @@ public class ManagedThread implements Runnable {
 	 * @return true if the thread woke up by itself. false if it was woken by another thread.
 	 */
 	public static boolean sleep(int pMillis) {
-		if (currentThread().hasCoffee()) {
-			currentThread().takeCoffee();
+		ManagedThread cur = currentThread();
+		if (cur.hasCoffee()) {
+			cur.takeCoffee();
 			return true;
 		}
-		currentThread()._isSleeping = true;
+		cur._isSleeping = true;
 		if (pMillis == -1) {
 			try {
 				while (true)
 					Thread.sleep(Long.MAX_VALUE);
 			} catch (InterruptedException e) {
-				currentThread().takeCoffee();
+				cur.takeCoffee();
 				return false;
 			}
 		}
@@ -155,11 +168,11 @@ public class ManagedThread implements Runnable {
 			try {
 				Thread.sleep(pMillis);
 			} catch (InterruptedException e) {
-				currentThread().takeCoffee();
+				cur.takeCoffee();
 				return false;
 			}
 		}
-		currentThread().takeCoffee();
+		cur.takeCoffee();
 		return true;
 	}
 
@@ -171,6 +184,14 @@ public class ManagedThread implements Runnable {
 			_thr.interrupt();
 		else
 			giveCoffee();
+	}
+	
+	/**
+	 * Tells wether the thread is sleeping or not.
+	 * @return true if the thread is sleeping, else false;
+	 */
+	public boolean isSleeping() {
+		return _isSleeping;
 	}
 	
 	public long getIdentifier() {

@@ -125,11 +125,6 @@ abstract class ThreadSafeMethod {
 				});
 			}
 			private final void proceedQueue() {
-				/**for (ThreadInfo thr : _reserved.keySet()) {
-					if (_reserved.get(thr).contains(false)) { // See if a thread is already writing on this field.
-						return;
-					}
-				}**/
 				if (_lastRead) {
 					proceedWriting();
 					proceedReading();
@@ -140,7 +135,15 @@ abstract class ThreadSafeMethod {
 				}
 			}
 			private final void proceedReading() {
-				if (!_waitReading.isEmpty() && _reserved.containsKey(_waitReading.peek())) {
+				if (_waitReading.isEmpty())
+					return;
+				for (ThreadInfo thr : _reserved.keySet()) {
+					if (_reserved.get(thr).contains(false) && !_waitReading.peek().equals(thr)) { // See if a thread is already writing on this field.
+						return;
+					}
+				}
+				
+				if (_reserved.containsKey(_waitReading.peek())) {
 					_waitReading.peek().proceed(this);
 				}
 				else if (!_lastRead || _waitWriting.isEmpty()) {
@@ -150,7 +153,15 @@ abstract class ThreadSafeMethod {
 				}
 			}
 			private final void proceedWriting() {
-				if (!_waitWriting.isEmpty() && _reserved.containsKey(_waitWriting.peek()) && _reserved.keySet().size() == 1) {
+				if (_waitWriting.isEmpty())
+					return;
+				for (ThreadInfo thr : _reserved.keySet()) {
+					if (_reserved.get(thr).contains(false) && !_waitWriting.peek().equals(thr)) { // See if a thread is already writing on this field.
+						return;
+					}
+				}
+				
+				if (_reserved.containsKey(_waitWriting.peek()) && _reserved.keySet().size() == 1) {
 					_waitWriting.peek().proceed(this);
 				}
 				else if (_lastRead || _waitReading.isEmpty()) {
@@ -180,6 +191,7 @@ abstract class ThreadSafeMethod {
 								_reserved.remove(pThr);
 							}
 						}
+						proceedQueue();
 					}
 					
 				});
@@ -313,6 +325,7 @@ abstract class ThreadSafeMethod {
 			}
 			public final void register(Instant pInst, Field[] pF, FieldInfo... fi) throws DeadlockException, TimeoutException {
 				ThreadInfo t = this;
+				Container<Boolean> sleep = new Container<Boolean>();
 				criticalStuff(new Runnable() {
 
 					@Override
@@ -322,12 +335,16 @@ abstract class ThreadSafeMethod {
 						_acknowledged.clear();
 						for (int i = 0; i < pF.length; i++) {
 							_acknowledged.put(fi[i], false);
+						}
+						for (int i = 0; i < pF.length; i++) {
 							fi[i].register(t, pF[i]._readOnly);
 						}
+						sleep._content = _acknowledged.contains(false);
 					}
 					
 				});
-				if (_acknowledged.contains(false)) {
+				if (sleep._content) {
+					LockManager.checkForDeadlocks();
 					int sleepTime;
 					if (pInst.isBefore(Instant.now()))
 						sleepTime = 1;
@@ -341,27 +358,35 @@ abstract class ThreadSafeMethod {
 				}
 			}
 			public final void proceed(FieldInfo pF) {
-				_acknowledged.put(pF, true);
-				if (!_acknowledged.contains(false)) {
-					for (int i = 0; i < _waiting.length; i++) {
-						_fieldInfos.push(_waiting[i]);
-						if (_waitingFields[i]._readOnly) {
-							_waiting[i]._waitReading.poll();
+				ThreadInfo t = this;
+				criticalStuff(new Runnable() {
+
+					@Override
+					public void run() {
+						_acknowledged.put(pF, true);
+						if (!_acknowledged.contains(false)) {
+							for (int i = 0; i < _waiting.length; i++) {
+								_fieldInfos.push(_waiting[i]);
+								if (_waitingFields[i]._readOnly) {
+									_waiting[i]._waitReading.poll();
+								}
+								else {
+									_waiting[i]._waitWriting.poll();
+								}
+								Stack<Boolean> s = _waiting[i]._reserved.get(this);
+								if (s == null) {
+									s = new Stack<Boolean>();
+									_waiting[i]._reserved.put(t, s);
+								}
+								s.push(_waitingFields[i]._readOnly);
+							}
+							_waiting = null;
+							_waitingFields = null;
+							_thr.wakeUp();
 						}
-						else {
-							_waiting[i]._waitWriting.poll();
-						}
-						Stack<Boolean> s = _waiting[i]._reserved.get(this);
-						if (s == null) {
-							s = new Stack<Boolean>();
-							_waiting[i]._reserved.put(this, s);
-						}
-						s.push(_waitingFields[i]._readOnly);
 					}
-					_waiting = null;
-					_waitingFields = null;
-					_thr.wakeUp();
-				}
+					
+				});
 			}
 			public final void free(FieldInfo... pF) {
 				ThreadInfo t = this;
@@ -386,6 +411,9 @@ abstract class ThreadSafeMethod {
 				});
 			}
 		}
+		
+		private static ManagedThread _deadLockHound;
+		
 		public static final void register(Instant pInst, ManagedThread pThr, Field... pF) throws DeadlockException, TimeoutException {
 			FieldInfo[] fi = new FieldInfo[pF.length];
 			ThreadInfo thr = ThreadInfo.getThreadInfo(pThr);
@@ -414,6 +442,28 @@ abstract class ThreadSafeMethod {
 			if (dexc != null)
 				throw dexc;
 		}
+		
+		/**
+		 * 
+		 */
+		public static synchronized void checkForDeadlocks() {
+			if (_deadLockHound == null) {
+				_deadLockHound = new ManagedThread() {
+					@Override
+					public void run() {
+						_deadLockHound = null;
+						Pair<ThreadInfo, FieldInfo>[] deadlocks = findDeadlocks();
+						// TODO record deadlocks
+						// TODO resolve deadlocks
+					}
+				};
+				_deadLockHound.start(Integer.MIN_VALUE);
+			}
+		}
+		private static synchronized Pair<ThreadInfo, FieldInfo>[] findDeadlocks() {
+			// TODO Implement a deadlock search
+			return null;
+		}
 		public static final void free(ManagedThread pThr, Field... pF) {
 			ThreadInfo thr = ThreadInfo.getThreadInfo(pThr);
 			for (Field f : pF) {
@@ -433,11 +483,17 @@ abstract class ThreadSafeMethod {
 		public final boolean _readOnly;
 		
 		public Field(Object pOwner, String pName) {
+			assert(pOwner != null);
+			assert(pName != null);
+			
 			_owner = pOwner;
 			_name = pName;
 			_readOnly = false;
 		}
 		public Field(Object pOwner, String pName, boolean pReadOnly) {
+			assert(pOwner != null);
+			assert(pName != null);
+			
 			_owner = pOwner;
 			_name = pName;
 			_readOnly = pReadOnly;
@@ -465,11 +521,22 @@ abstract class ThreadSafeMethod {
 	private boolean _didPre = false;
 	
 	protected ThreadSafeMethod(ThreadSafeMethod[] pSub, Field... pVars) {
+		assert(pSub != null);
+		assert(pVars != null);
+		for (ThreadSafeMethod t : pSub)
+			assert(t != null);
+		for (Field f : pVars)
+			assert(f != null);
+		
 		_subCalls = pSub;
 		_vars = pVars;
 	}
 	
 	protected ThreadSafeMethod(Field... pVars) {
+		assert(pVars != null);
+		for (Field f : pVars)
+			assert(f != null);
+		
 		_subCalls = null;
 		_vars = pVars;
 	}
