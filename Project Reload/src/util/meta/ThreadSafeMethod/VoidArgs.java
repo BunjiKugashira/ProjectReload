@@ -43,11 +43,18 @@ public abstract class VoidArgs<Arg> extends ThreadSafeMethod {
 		}
 	}
 	/**
-	 * This is a placeholder for the Arglist class that can be overwritten.
+	 * TODO Write Comment
 	 * 
 	 * @author Alexander Otto
 	 */
-	public static abstract class Arglist {
+	public static class Arglist<TypeA, TypeB> {
+		public final TypeA _cont;
+		public final TypeB _next;
+		
+		public Arglist(TypeA pContent, TypeB pNext) {
+			_cont = pContent;
+			_next = pNext;
+		}
 	}
 	
 	/**

@@ -13,6 +13,7 @@ import org.junit.Test;
 
 import util.meta.DeadlockException;
 import util.meta.ManagedThread;
+import util.meta.ThreadSafeMethod.VoidArgs.Arglist;
 
 /**
  * @author Alexander
@@ -219,9 +220,49 @@ public class VoidArgsTest {
 		assertTrue(ThreadSafeMethod.isEmpty());
 		// Test timeout
 		
-		// TODO
+		new ManagedThread() {
+			
+			@Override
+			public void run() {
+				try {
+					new VoidArgs<Object>(f) {
+
+						@Override
+						protected void run(Object pArg) {
+							System.out.println("I was here");
+							ManagedThread.sleep(_timeout*2);
+						}
+						
+					}.start(-1, new Object());
+				} catch (DeadlockException | TimeoutException e) {
+					fail(e.toString());
+				}
+			}
+			
+		}.start(0);
+		VoidArgs<Object> varg = new VoidArgs<Object>(f) {
+
+			@Override
+			protected void run(Object pArg) {
+				fail("Field should be occupied.");
+			}
+			
+		};
+		ManagedThread.sleep(_timeout);
+		_success = false;
+		try {
+			varg.start(_timeout, new Object());
+		} catch (DeadlockException e) {
+			fail(e.toString());
+			e.printStackTrace();
+		} catch (TimeoutException e) {
+			// This is supposed to happen.
+			_success = true;
+		}
+		assertTrue(_success);
 		assertTrue(ThreadSafeMethod.isEmpty());
 		// Test deadlock
+		
 		// TODO
 		assertTrue(ThreadSafeMethod.isEmpty());
 	}
