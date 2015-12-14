@@ -6,8 +6,11 @@ package util.meta.ThreadSafeMethod;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.Hashtable;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.Stack;
@@ -15,6 +18,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeoutException;
 
+import util.Container;
 import util.meta.DeadlockException;
 import util.meta.ManagedThread;
 
@@ -24,460 +28,452 @@ import util.meta.ManagedThread;
  */
 abstract class ThreadSafeMethod {
 	private static final class LockManager {
-		private static class Container<Type> {
-			public Type _content;
-		}
-		private static final class Pair<A, B> {
-			public final A a;
-			public final B b;
-			public Pair(A pA, B pB) {
-				a = pA;
-				b = pB;
-			}
-		}
-		private static class FieldInfo {
+		private static final class FieldInfo implements Comparable<FieldInfo> {
 			private static final Hashtable<Field, FieldInfo> _fieldInfos = new Hashtable<Field, FieldInfo>();
-			private final Hashtable<ManagedThread, ManagedThread> _curWorking = new Hashtable<ManagedThread, ManagedThread>();
-			private boolean _lastRead = false;
-			public final Field _field;
-			public final Hashtable<ThreadInfo, Stack<Boolean>> _reserved = new Hashtable<ThreadInfo, Stack<Boolean>>();
-			public final LinkedList<ThreadInfo> _waitReading = new LinkedList<ThreadInfo>();
-			public final LinkedList<ThreadInfo> _waitWriting = new LinkedList<ThreadInfo>();
 			
-			public boolean equals(Object pObj) {
-				try {
-					return _field.equals(((FieldInfo) pObj)._field);	
+			private final LinkedList<ThreadInfo> _waitingToRead = new LinkedList<ThreadInfo>();
+			private final LinkedList<ThreadInfo> _waitingToWrite = new LinkedList<ThreadInfo>();
+			private final LinkedList<ThreadInfo> _waitingToReadNewb = new LinkedList<ThreadInfo>();
+			private final LinkedList<ThreadInfo> _waitingToWriteNewb = new LinkedList<ThreadInfo>();
+			private final Hashtable<ThreadInfo, Boolean> _registered = new Hashtable<ThreadInfo, Boolean>();
+			private final Field _field;
+			
+			private boolean _lastRead = false;
+			
+			public FieldInfo(Field pF) {
+				_field = pF;
+			}
+			
+			public void registerWait(ThreadInfo pThr, boolean pReadOnly) {
+				FieldInfo t = this;
+				criticalStuff(new Runnable() {
+
+					@Override
+					public void run() {
+						if (_registered.containsKey(pThr)) {
+							if (pReadOnly) {
+								_waitingToRead.offerLast(pThr);
+							}
+							else {
+								_waitingToWrite.offerLast(pThr);
+							}
+						}
+						else {
+							if (pReadOnly) {
+								_waitingToReadNewb.offerLast(pThr);
+							}
+							else {
+								_waitingToWriteNewb.offerLast(pThr);
+							}
+						}
+					}
+					
+				});
+				
+			}
+			public void removeWait(ThreadInfo pT) {
+				criticalStuff(new Runnable() {
+					
+					@Override
+					public void run() {
+						_waitingToRead.removeFirstOccurrence(pT);
+						_waitingToReadNewb.removeFirstOccurrence(pT);
+						_waitingToWrite.removeFirstOccurrence(pT);
+						_waitingToWriteNewb.removeFirstOccurrence(pT);
+						removeFieldInfo();
+					}
+					
+				});
+			}
+			private void removeFieldInfo() {
+				FieldInfo t = this;
+				if (_registered.isEmpty() && _waitingToRead.isEmpty() && _waitingToWrite.isEmpty() && _waitingToReadNewb.isEmpty() && _waitingToWriteNewb.isEmpty()) {
+					criticalStuffStat(new Runnable() {
+						
+						@Override
+						public void run() {
+							_fieldInfos.remove(t._field);
+						}
+						
+					});
 				}
-				catch (Exception e) {
-					return false;
+			}
+			public int compareTo(FieldInfo pF) {
+				return _field.compareTo(pF._field);
+			}
+			public boolean check(ThreadInfo pThr, FieldList pFields, int pCounter) {
+				FieldInfo t = this;
+				Container<Boolean> ans = new Container<Boolean>();
+				criticalStuff(new Runnable() {
+
+					@Override
+					public void run() {
+						Field f = pFields.get(t);
+						if (f._readOnly) {
+							ans.cont = !_registered.containsValue(false); // only read if no-one is writing
+						}
+						else {
+							ans.cont = _registered.isEmpty(); // only write if no-one else is doing anything
+						}
+						
+						if (ans.cont && (pCounter+1 >= pFields.length() || pFields.getInfo(pCounter+1).check(pThr, pFields, pCounter+1))) {
+							// register the thread
+							if (f._readOnly) {
+								_waitingToRead.removeFirstOccurrence(pThr);
+								_waitingToReadNewb.removeFirstOccurrence(pThr);
+							}
+							else {
+								_waitingToWrite.removeFirstOccurrence(pThr);
+								_waitingToWriteNewb.removeFirstOccurrence(pThr);
+							}
+							_registered.put(pThr, f._readOnly);
+						}
+					}
+					
+				});
+				return ans.cont;
+			}
+			public void tryNext() {
+				criticalStuff(new Runnable() {
+
+					@Override
+					public void run() {
+						if (!_waitingToWrite.isEmpty() || !_waitingToRead.isEmpty()) {
+							if (_lastRead || _waitingToRead.isEmpty())
+								tryNextList(_waitingToWrite);
+							else
+								tryNextList(_waitingToRead);
+						}
+						else if (!_waitingToWriteNewb.isEmpty() || !_waitingToReadNewb.isEmpty()) {
+							if (_lastRead || _waitingToReadNewb.isEmpty())
+								tryNextList(_waitingToWriteNewb);
+							else
+								tryNextList(_waitingToReadNewb);
+						}
+					}
+					
+				});
+			}
+			private void tryNextList(LinkedList<ThreadInfo> pList) {
+				LinkedList<ThreadInfo> l = new LinkedList<ThreadInfo>(pList); // TODO Find a better way to prevent concurrentmodificationexception
+				for (ThreadInfo t : l) {
+					t.check();
 				}
 			}
-			public int hashCode() {
-				return _field.hashCode();
+			public void remove(ThreadInfo pThr, boolean pRestore) {
+				FieldInfo t = this;
+				criticalStuff(new Runnable() {
+					
+					@Override
+					public void run() {
+						if (pRestore) {
+							_registered.put(pThr, true);
+						}
+						else {
+							_registered.remove(pThr);
+							removeFieldInfo();
+						}
+					}
+				});
 			}
-			public String toString() {
-				String s = super.toString() + "\n";
-				s += _field.toString() + "\n";
-				s += "Reserved: \n";
-				for (ThreadInfo t : _reserved.keySet()) {
-					s += t._thr.toString() + " readOnly? " + _reserved.get(t) + "\n";
-				}
-				s += "Waiting to Read: \n";
-				for (ThreadInfo t : _waitReading) {
-					s += t._thr.toString() + "\n";
-				}
-				s += "Waiting to Write: \n";
-				for (ThreadInfo t : _waitWriting) {
-					s += t._thr.toString() + "\n";
-				}
-				s += "End";
-				return s;
-			}
-			private FieldInfo(Field pField) {
-				_field = pField;
-			}
-			private static final synchronized void criticalStuffStat(Runnable pRun) {
-				pRun.run();
-			}
-			private final synchronized void criticalStuff(Runnable pRun) {
-				pRun.run();
-			}
-			public static final FieldInfo getFieldInfo(Field pField) {
+			
+			public static FieldInfo getInfo(Field pF) {
 				Container<FieldInfo> c = new Container<FieldInfo>();
 				criticalStuffStat(new Runnable() {
 
 					@Override
 					public void run() {
-						c._content = _fieldInfos.get(pField);
-						if (c._content == null) {
-							c._content = new FieldInfo(pField);
-							_fieldInfos.put(pField, c._content);
+						c.cont = _fieldInfos.get(pF);
+						if (c.cont == null) {
+							c.cont = new FieldInfo(pF);
+							_fieldInfos.put(pF, c.cont);
 						}
-						c._content.startWork();
 					}
 					
 				});
-				return c._content;
+				return c.cont;
 			}
-			public final void register(ThreadInfo pThr, boolean pReadOnly) {
+			
+			private synchronized void criticalStuff(Runnable pRun) {
+				pRun.run();
+			}
+		}
+		private static final class ThreadInfo {
+			private static final Hashtable<ManagedThread, ThreadInfo> _threadInfos = new Hashtable<ManagedThread, ThreadInfo>();
+
+			private final Hashtable<Field, Boolean> _registered = new Hashtable<Field, Boolean>();
+			private final ManagedThread _thr;
+			
+			private FieldList _waiting = null;
+			private boolean _deadLockChecked = false;
+			
+			public ThreadInfo(ManagedThread pThr) {
+				_thr = pThr;
+			}
+			
+			public boolean isWaiting() {
+				return _waiting != null;
+			}
+			public void registerWait(FieldList pFields) {
+				_waiting = pFields;
+				_deadLockChecked = false;
+			}
+			public boolean hasRights(Field pF) {
+				if (!_registered.contains(pF))
+					return false;
+				else
+					return pF._readOnly || !_registered.get(pF);
+			}
+			public void check() {
+				ThreadInfo t = this;
 				criticalStuff(new Runnable() {
 
 					@Override
 					public void run() {
-						Stack<Boolean> bo = _reserved.get(pThr);
-						if (bo != null) {
-							if (pReadOnly) {
-								_waitReading.addFirst(pThr);
-							}
-							else {
-								_waitWriting.addFirst(pThr);
-							}
+						if (_waiting.check(t)) {
+							_thr.wakeUp(_waiting);
+							_waiting = null;
 						}
-						else if (pReadOnly) {
-							_waitReading.offer(pThr);
+						else if (!_deadLockChecked) {
+							_deadLockChecked = true;
+							// TODO find deadlocks
+						}
+					}
+					
+				});
+			}
+			public void removeWait() {
+				_waiting = null;
+				removeThreadInfo();
+			}
+			public void remove(Field pF, boolean pRestore) {
+				ThreadInfo t = this;
+				criticalStuff(new Runnable() {
+					
+					@Override
+					public void run() {
+						if (pRestore) {
+							_registered.put(pF, true);
 						}
 						else {
-							_waitWriting.offer(pThr);
+							_registered.remove(pF);
+							removeThreadInfo();
 						}
-						proceedQueue();
 					}
-					
 				});
 			}
-			private final void proceedQueue() {
-				if (_lastRead) {
-					proceedWriting();
-					proceedReading();
-				}
-				else {
-					proceedReading();
-					proceedWriting();
-				}
-			}
-			private final void proceedReading() {
-				if (_waitReading.isEmpty())
-					return;
-				for (ThreadInfo thr : _reserved.keySet()) {
-					if (_reserved.get(thr).contains(false) && !_waitReading.peek().equals(thr)) { // See if a thread is already writing on this field.
-						return;
-					}
-				}
-				
-				if (_reserved.containsKey(_waitReading.peek())) {
-					_waitReading.peek().proceed(this);
-				}
-				else if (!_lastRead || _waitWriting.isEmpty()) {
-					if (!_waitReading.isEmpty()) {
-						_waitReading.peek().proceed(this);
-					}
-				}
-			}
-			private final void proceedWriting() {
-				if (_waitWriting.isEmpty())
-					return;
-				for (ThreadInfo thr : _reserved.keySet()) {
-					if (_reserved.get(thr).contains(false) && !_waitWriting.peek().equals(thr)) { // See if a thread is already writing on this field.
-						return;
-					}
-				}
-				
-				if (_reserved.containsKey(_waitWriting.peek()) && _reserved.keySet().size() == 1) {
-					_waitWriting.peek().proceed(this);
-				}
-				else if (_lastRead || _waitReading.isEmpty()) {
-					if (!_waitWriting.isEmpty()) {
-						_waitWriting.peek().proceed(this);
-					}
-				}
-			}
-			public final void release(ThreadInfo pThr) {
+			private void removeThreadInfo() {
+				ThreadInfo t = this;
 				criticalStuff(new Runnable() {
-
-					@Override
-					public void run() {
-						if (pThr._waiting != null) {
-							_waitReading.remove(pThr);
-							_waitWriting.remove(pThr);
-						}
-						else {
-							System.out.println(pThr.toString()); // TODO Debug
-							System.out.println("pThr hashCode = " + pThr.hashCode());
-							for (ThreadInfo t : _reserved.keySet()) {
-								System.out.println("_reserved hashCodes = " + t.hashCode());
-							}
-							Stack<Boolean> s = _reserved.get(pThr);
-							s.pop();
-							if (s.isEmpty()) {
-								_reserved.remove(pThr);
-							}
-						}
-						proceedQueue();
-					}
 					
-				});
-			}
-			private final void startWork() {
-				criticalStuff(new Runnable() {
-
 					@Override
 					public void run() {
-						_curWorking.put(ManagedThread.currentThread(), ManagedThread.currentThread());
-					}
-					
-				});
-			}
-			public final void endWork() {
-				criticalStuff(new Runnable() {
-
-					@Override
-					public void run() {
-						_curWorking.remove(ManagedThread.currentThread());
-						if (_curWorking.isEmpty() && _reserved.isEmpty()) {
+						if (_registered.isEmpty() && _waiting == null) {
 							criticalStuffStat(new Runnable() {
-
+								
 								@Override
 								public void run() {
-									_fieldInfos.remove(_field);
+									_threadInfos.remove(t._thr);
 								}
-								
 							});
 						}
 					}
 					
-				});				
+				});
 			}
-		}
-		private static class ThreadInfo {
-			private static final Hashtable<ManagedThread, ThreadInfo> _threadInfos = new Hashtable<ManagedThread, ThreadInfo>();
-			private final Hashtable<ManagedThread, ManagedThread> _curWorking = new Hashtable<ManagedThread, ManagedThread>();
-			public final ManagedThread _thr;
-			public final Stack<FieldInfo> _fieldInfos = new Stack<FieldInfo>();
-			public Field[] _waitingFields = null;
-			public FieldInfo[] _waiting = null;
-			private final Hashtable<FieldInfo, Boolean> _acknowledged = new Hashtable<FieldInfo, Boolean>();
 			
-			public boolean equals(Object pObj) {
-				try {
-					return _thr.equals(((ThreadInfo) pObj)._thr);
-				}
-				catch (Exception e) {
-					return false;
-				}
-			}
-			public int hashCode() {
-				return _thr.hashCode();
-			}
-			public String toString() {
-				String s = _thr.toString() + "\n";
-				s += "Name = " + _thr.getName() + "\n";
-				s += "FieldInfos: \n";
-				for (FieldInfo f : _fieldInfos) {
-					s += f._field.toString() + "\n";
-				}
-				s += "Waiting for: \n";
-				if (_waitingFields != null)
-				for (Field f : _waitingFields) {
-					s += f.toString() + "\n";
-				}
-				if (_waiting != null)
-				for (FieldInfo f : _waiting) {
-					s += f._field.toString() + " ack? ";
-					s += _acknowledged.get(f) + "\n";
-				}
-				s += "End";
-				return s;
-			}
-			private ThreadInfo(ManagedThread pThr) {
-				_thr = pThr;
-			}
-			private static final synchronized void criticalStuffStat(Runnable pRun) {
-				pRun.run();
-			}
-			private final synchronized void criticalStuff(Runnable pRun) {
-				pRun.run();
-			}
-			public static final ThreadInfo getThreadInfo(ManagedThread pThr) {
+			public static ThreadInfo getInfo(ManagedThread pF) {
 				Container<ThreadInfo> c = new Container<ThreadInfo>();
 				criticalStuffStat(new Runnable() {
 
 					@Override
 					public void run() {
-						c._content = _threadInfos.get(pThr);
-						if (c._content == null) {
-							c._content = new ThreadInfo(pThr);
-							_threadInfos.put(pThr, c._content);
-						}
-						c._content.startWork();
-					}
-					
-				});
-				return c._content;
-			}
-			private final void startWork() {
-				criticalStuff(new Runnable() {
-
-					@Override
-					public void run() {
-						_curWorking.put(ManagedThread.currentThread(), ManagedThread.currentThread());
-					}
-					
-				});
-			}
-			public final void endWork() {
-				criticalStuff(new Runnable() {
-
-					@Override
-					public void run() {
-						_curWorking.remove(ManagedThread.currentThread());
-						if (_curWorking.isEmpty() && _fieldInfos.isEmpty() && _waiting == null) {
-							criticalStuffStat(new Runnable() {
-
-								@Override
-								public void run() {
-									_threadInfos.remove(_thr);
-								}
-								
-							});
-						}
-					}
-					
-				});				
-			}
-			public final void register(Instant pInst, Field[] pF, FieldInfo... fi) throws DeadlockException, TimeoutException {
-				ThreadInfo t = this;
-				Container<Boolean> sleep = new Container<Boolean>();
-				criticalStuff(new Runnable() {
-
-					@Override
-					public void run() {
-						_waiting = fi;
-						_waitingFields = pF;
-						_acknowledged.clear();
-						for (int i = 0; i < pF.length; i++) {
-							_acknowledged.put(fi[i], false);
-						}
-						for (int i = 0; i < pF.length; i++) {
-							fi[i].register(t, pF[i]._readOnly);
-						}
-						sleep._content = _acknowledged.contains(false);
-					}
-					
-				});
-				if (sleep._content) {
-					LockManager.checkForDeadlocks();
-					int sleepTime;
-					if (pInst.isBefore(Instant.now()))
-						sleepTime = 1;
-					if (pInst.isAfter(Instant.now().plusMillis(Integer.MAX_VALUE)))
-						sleepTime = -1;
-					else
-						sleepTime = (int) Instant.now().until(pInst, ChronoUnit.MILLIS);
-					if (ManagedThread.sleep(sleepTime)) {
-						throw new TimeoutException();
-					}
-				}
-			}
-			public final void proceed(FieldInfo pF) {
-				ThreadInfo t = this;
-				criticalStuff(new Runnable() {
-
-					@Override
-					public void run() {
-						_acknowledged.put(pF, true);
-						if (!_acknowledged.contains(false)) {
-							for (int i = 0; i < _waiting.length; i++) {
-								_fieldInfos.push(_waiting[i]);
-								if (_waitingFields[i]._readOnly) {
-									_waiting[i]._waitReading.poll();
-								}
-								else {
-									_waiting[i]._waitWriting.poll();
-								}
-								Stack<Boolean> s = _waiting[i]._reserved.get(this);
-								if (s == null) {
-									s = new Stack<Boolean>();
-									_waiting[i]._reserved.put(t, s);
-								}
-								s.push(_waitingFields[i]._readOnly);
-							}
-							_waiting = null;
-							_waitingFields = null;
-							_thr.wakeUp();
+						c.cont = _threadInfos.get(pF);
+						if (c.cont == null) {
+							c.cont = new ThreadInfo(pF);
+							_threadInfos.put(pF, c.cont);
 						}
 					}
 					
 				});
-			}
-			public final void free(FieldInfo... pF) {
-				ThreadInfo t = this;
-				criticalStuff(new Runnable() {
-
-					@Override
-					public void run() {
-						for (FieldInfo f : pF) {
-							f.release(t);
-						}
-						if (_waiting != null) {
-							_waiting = null;
-							_waitingFields = null;
-						}
-						else {
-							for (FieldInfo f : pF) {
-								_fieldInfos.remove(f);
-							}
-						}
-					}
-					
-				});
-			}
-		}
-		
-		private static ManagedThread _deadLockHound;
-		
-		public static final void register(Instant pInst, ManagedThread pThr, Field... pF) throws DeadlockException, TimeoutException {
-			FieldInfo[] fi = new FieldInfo[pF.length];
-			ThreadInfo thr = ThreadInfo.getThreadInfo(pThr);
-			for (int i = 0; i < pF.length; i++) {
-				fi[i] = FieldInfo.getFieldInfo(pF[i]);
-			}
-			DeadlockException dexc = null;
-			TimeoutException texc = null;
-			try {
-				thr.register(pInst, pF, fi);
-			} catch (DeadlockException e) {
-				dexc = e;
-			} catch (TimeoutException e) {
-				texc = e;
+				return c.cont;
 			}
 			
-			System.out.println(thr.toString()); // TODO Debug
-			// Tell the Infos that they're no longer being worked on
-			for (FieldInfo f : fi) {
-				System.out.println(f.toString()); // TODO Debug
-				f.endWork();
+			private synchronized void criticalStuff(Runnable pRun) {
+				pRun.run();
 			}
-			thr.endWork();
-			if (texc != null)
-				throw texc;
-			if (dexc != null)
-				throw dexc;
+		}
+		public static final class FieldList implements Iterable<FieldInfo> {
+			private final ArrayList<FieldInfo> _list = new ArrayList<FieldInfo>();
+			private final Hashtable<FieldInfo, Field> _fields = new Hashtable<FieldInfo, Field>();
+			private final Hashtable<FieldInfo, Boolean> _restorationList = new Hashtable<FieldInfo, Boolean>();
+			
+			private TimeoutException _texc = null;
+			private DeadlockException _dexc = null;
+			
+			public void setException(TimeoutException pE) {
+				_texc = pE;
+			}
+			public void setException(DeadlockException pE) {
+				_dexc = pE;
+			}
+			public TimeoutException getTimeoutException() {
+				return _texc;
+			}
+			public DeadlockException getDeadlockException() {
+				return _dexc;
+			}
+			public FieldInfo getInfo(int pPos) {
+				return _list.get(pPos);
+			}
+			public int length() {
+				return _list.size();
+			}
+			public boolean isEmpty() {
+				return _list.isEmpty();
+			}
+			public void offer(FieldInfo pF, Field pFi, boolean pRestore) {
+				_list.add(pF);
+				_fields.put(pF, pFi);
+				_restorationList.put(pF, pRestore);
+			}
+			public Field get(FieldInfo pF) {
+				return _fields.get(pF);
+			}
+			public boolean check(ThreadInfo pThr) {
+				return _list.get(0).check(pThr, this, 0);
+			}
+			public void sort() {
+				_list.sort(new Comparator<FieldInfo>() {
+
+					@Override
+					public int compare(FieldInfo arg0, FieldInfo arg1) {
+						return arg0.compareTo(arg1);
+					}
+					
+				});
+			}
+			@Override
+			public Iterator<FieldInfo> iterator() {
+				return _list.iterator();
+			}
+			public boolean getRestore(FieldInfo pF) {
+				return _restorationList.get(pF);
+			}
+			
 		}
 		
 		/**
-		 * 
+		 * @param pInst
+		 * @param pThr
+		 * @param pFields
+		 * @return
+		 * @throws DeadlockException 
+		 * @throws TimeoutException 
 		 */
-		public static synchronized void checkForDeadlocks() {
-			if (_deadLockHound == null) {
-				_deadLockHound = new ManagedThread() {
-					@Override
-					public void run() {
-						_deadLockHound = null;
-						Pair<ThreadInfo, FieldInfo>[] deadlocks = findDeadlocks();
-						// TODO record deadlocks
-						// TODO resolve deadlocks
+		public static FieldList register(Instant pInst, ManagedThread pThr, Field[] pFields) {
+			// remove duplicates
+			for (int i = 0; i < pFields.length-1; i++) {
+				for (int j = i+1; j < pFields.length; j++) {
+					if (pFields[i].equals(pFields[j]))
+						throw new IllegalArgumentException();
+				}
+			}
+			// register waits
+			FieldList fl = new FieldList();
+			Container<FieldInfo> ficont = new Container<FieldInfo>();
+			criticalStuffStat(new Runnable() {
+
+				@Override
+				public void run() {
+					ThreadInfo ti = ThreadInfo.getInfo(pThr);
+					for (Field f : pFields) {
+						FieldInfo fi = FieldInfo.getInfo(f);
+						if (!ti.hasRights(f)) {
+							fi.registerWait(ti, f._readOnly);
+							fl.offer(fi, f, ti.hasRights(new Field(f._owner, f._name, true)));
+							ficont.cont = fi;
+						}
 					}
-				};
-				_deadLockHound.start(Integer.MIN_VALUE);
+					if (!fl.isEmpty())
+						ti.registerWait(fl);
+				}
+				
+			});
+			// see whether the program can run immediately
+			if (fl.isEmpty())
+				return null;
+			fl.sort();
+			pThr.setTired(fl);
+			ficont.cont.tryNext();
+			if (pThr.isTired(fl)) {
+				int sleeptime = 0;
+				if (Instant.now().plusMillis(Integer.MAX_VALUE).isBefore(pInst))
+					sleeptime = -1;
+				else {
+					sleeptime = (int)Instant.now().until(pInst, ChronoUnit.MILLIS);
+					if (sleeptime < 0)
+						sleeptime = 0;
+				}
+				if (pThr.sleep(fl, sleeptime)) {
+					fl.setException(new TimeoutException("Thread " + pThr.toString() + " timed out after " + sleeptime + " MILLIS."));
+				}
+				else if (true) {
+					// TODO check whether a deadlock flag is set
+					// fl.setException();
+				}	
 			}
+			return fl;
 		}
-		private static synchronized Pair<ThreadInfo, FieldInfo>[] findDeadlocks() {
-			// TODO Implement a deadlock search
-			return null;
+
+		/**
+		 * @param pThr
+		 * @param pFields
+		 */
+		public static void free(ManagedThread pThr, FieldList pFields) {
+			criticalStuffStat(new Runnable() {
+
+				@Override
+				public void run() {
+					ThreadInfo t = ThreadInfo.getInfo(pThr);
+					if (!t.isWaiting()) {
+						for (FieldInfo f : pFields) {
+							// remove the fields from the list of registered fields
+							boolean restore = pFields.getRestore(f);
+							f.remove(t, restore);
+							t.remove(pFields.get(f), restore);
+						}
+					}
+					else {
+						for (FieldInfo f : t._waiting) {
+							f.removeWait(t);
+						}
+						t.removeWait();
+					}
+					for (FieldInfo f : pFields) {
+						// see whether a new thread can access this field
+						f.tryNext();
+					}
+				}
+				
+			});
 		}
-		public static final void free(ManagedThread pThr, Field... pF) {
-			ThreadInfo thr = ThreadInfo.getThreadInfo(pThr);
-			for (Field f : pF) {
-				FieldInfo fi = FieldInfo.getFieldInfo(f);
-				thr.free(fi);
-				fi.endWork();
-			}
-			
-			// Tell the Infos that they're no longer being worked on
-			thr.endWork();
+
+		/**
+		 * @return
+		 */
+		public static boolean isEmpty() {
+			return FieldInfo._fieldInfos.isEmpty() && ThreadInfo._threadInfos.isEmpty();
+		}
+		
+		private static synchronized void criticalStuffStat(Runnable pRun) {
+			pRun.run();
 		}
 	}
 	
-	public static abstract class Field {
+	public static class Field implements Comparable<Field> {
+		private int _idcounter = 0;
+		public final int _id;
 		public final Object _owner;
 		public final String _name;
 		public final boolean _readOnly;
@@ -486,6 +482,7 @@ abstract class ThreadSafeMethod {
 			assert(pOwner != null);
 			assert(pName != null);
 			
+			_id = _idcounter++;
 			_owner = pOwner;
 			_name = pName;
 			_readOnly = false;
@@ -494,13 +491,26 @@ abstract class ThreadSafeMethod {
 			assert(pOwner != null);
 			assert(pName != null);
 			
+			_id = _idcounter++;
 			_owner = pOwner;
 			_name = pName;
 			_readOnly = pReadOnly;
 		}
+		@Override
+		public int compareTo(Field pF) {
+			int ret = _id - pF._id;
+			if (ret > 0)
+				return 1;
+			else if (ret < 0)
+				return -1;
+			else
+				return _name.compareTo(pF._name);
+		}
+		@Override
 		public int hashCode() {
 			return _owner.hashCode() * _name.hashCode();
 		}
+		@Override
 		public boolean equals(Object pObj) {
 			try {
 				Field f = (Field) pObj;
@@ -510,6 +520,7 @@ abstract class ThreadSafeMethod {
 				return false;
 			}
 		}
+		@Override
 		public String toString() {
 			return _owner.toString() + " : " + _name + " readOnly? " + _readOnly;
 		}
@@ -517,7 +528,7 @@ abstract class ThreadSafeMethod {
 	
 	protected final ThreadSafeMethod[] _subCalls;
 	protected final Field[] _vars;
-	private final Stack<Field> _registered = new Stack<Field>();
+	private LockManager.FieldList _registered = null;
 	private boolean _didPre = false;
 	
 	protected ThreadSafeMethod(ThreadSafeMethod[] pSub, Field... pVars) {
@@ -542,58 +553,41 @@ abstract class ThreadSafeMethod {
 	}
 	
 	protected final void pre(Instant pInst) throws DeadlockException, TimeoutException {
-		Collection<Field> c = collectFields(this);
-		Field[] fArr = new Field[0];
-		fArr = c.toArray(fArr);
-		DeadlockException dexc = null;
-		TimeoutException texc = null;
-		try {
-			LockManager.register(pInst, ManagedThread.currentThread(), fArr);
-		} catch (DeadlockException e) {
-			dexc = e;
-		} catch (TimeoutException e) {
-			texc = e;
-		}
-		if (fArr != null)
-			_registered.addAll(c);
-		if (texc != null)
-			throw texc;
-		if (dexc != null)
-			throw dexc;
+		if (_didPre)
+			return;
+		
+		_registered = LockManager.register(pInst, ManagedThread.currentThread(), collectFields());
+		if (_registered.getDeadlockException() != null)
+			throw _registered.getDeadlockException();
+		if (_registered.getTimeoutException() != null)
+			throw _registered.getTimeoutException();
 	}
 	
-	private final Collection<Field> collectFields(ThreadSafeMethod pT) {
-		_didPre = true;
-		Stack<Field> it = new Stack<Field>();
-		if (_vars != null)
-		for (Field f : _vars) {
-			it.add(f);
-		}
-		if (_subCalls != null)
-		for (ThreadSafeMethod t : _subCalls) {
-			it.addAll(collectFields(t));
-		}
-		return it;
+	private Field[] collectFields() {
+		// TODO collect fields from all sub calls
+		return _vars;
 	}
 	
 	protected final void post() {
-		LockManager.free(ManagedThread.currentThread(), _registered.toArray(new Field[0]));
-		_registered.clear();
+		if (_registered != null)
+			LockManager.free(ManagedThread.currentThread(), _registered);
+		_registered = null;
 	}
 	
 	public static final boolean isEmpty() {
-		if (!LockManager.ThreadInfo._threadInfos.isEmpty()) {
-			System.out.println("Thread Infos not empty!");
-			for (ManagedThread t : LockManager.ThreadInfo._threadInfos.keySet()) {
-				System.out.println(LockManager.ThreadInfo._threadInfos.get(t).toString());
+		if (!LockManager.isEmpty()) {
+			if (!LockManager.FieldInfo._fieldInfos.isEmpty()) {
+				System.out.println("FieldInfos still has " + LockManager.FieldInfo._fieldInfos.size() + " elements.");
+				for (Field f : LockManager.FieldInfo._fieldInfos.keySet()) {
+					String s = f.toString() + "\n";
+					s += LockManager.FieldInfo._fieldInfos.get(f)._registered.size();
+					System.out.println(s);
+				}
+			}
+			if (!LockManager.ThreadInfo._threadInfos.isEmpty()) {
+				System.out.println("ThreadInfos still has " + LockManager.ThreadInfo._threadInfos.size() + " elements.");
 			}
 		}
-		if (!LockManager.FieldInfo._fieldInfos.isEmpty()) {
-			System.out.println("Field Infos not empty!");
-			for (Field f : LockManager.FieldInfo._fieldInfos.keySet()) {
-				System.out.println(LockManager.FieldInfo._fieldInfos.get(f).toString());
-			}
-		}
-		return LockManager.ThreadInfo._threadInfos.isEmpty() && LockManager.FieldInfo._fieldInfos.isEmpty();
+		return LockManager.isEmpty();
 	}
 }

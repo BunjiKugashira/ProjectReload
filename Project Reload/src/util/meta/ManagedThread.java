@@ -11,6 +11,7 @@ import java.util.Map;
 
 import javax.naming.ldap.HasControls;
 
+import util.Container;
 import error.Log;
 
 /**
@@ -21,22 +22,22 @@ public class ManagedThread implements Runnable {
 	private static Hashtable<Thread, ManagedThread> _threads = new Hashtable<Thread, ManagedThread>();
 	private static int _numActiveThreads = 0;
 	private static int _numSleepingThreads = 0;
+	public static final Object DEFAULTKEY = new Object();
 	
 	private final Thread _thr;
-	private int _priority;
-	private String _name;
-	private boolean _isSleeping;
-	private boolean _hasCoffee;
+	private int _priority = 0;
+	private String _name = "";
+	private boolean _isSleeping = false;
+	// Possible threadstates: 0=running, 1=tired, 2=sleeping, 3=hasCoffee
+	private Hashtable<Object, Integer> _threadState = new Hashtable<Object, Integer>();
 	
 	public ManagedThread(Thread pThr) {
 		_thr = pThr;
-		setPriority(0);
 		_threads.put(_thr, this);
 	}
 	
 	public ManagedThread() {
 		_thr = new Thread(this);
-		setPriority(0);
 		_threads.put(_thr, this);
 	}
 
@@ -139,8 +140,11 @@ public class ManagedThread implements Runnable {
 	 * Makes the thread sleep (pause execution) until woken up.
 	 * @return false as to accommodate sleep(int pMillis). After calling this method the thread will never wake up by itself to return true.
 	 */
-	public static Boolean sleep() {
-		return sleep(-1);
+	public Boolean sleep() {
+		return sleep(DEFAULTKEY);
+	}
+	public Boolean sleep(Object pKey) {
+		return sleep(pKey, -1);
 	}
 
 	/**
@@ -148,50 +152,134 @@ public class ManagedThread implements Runnable {
 	 * @param pMillis The time in millis that the thread is sleeping until it wakes up by itself. If pMillis == -1 then the thread won't wake up by itself.
 	 * @return true if the thread woke up by itself. false if it was woken by another thread.
 	 */
-	public static boolean sleep(int pMillis) {
+	public boolean sleep(int pMillis) {
+		return sleep(DEFAULTKEY, pMillis);
+	}
+	public boolean sleep(Object pKey, int pMillis) {
 		ManagedThread cur = currentThread();
-		if (cur.hasCoffee()) {
-			cur.takeCoffee();
-			return true;
+		if (cur._threadState.containsKey(pKey) && cur._threadState.get(pKey) == 3) {
+			cur._threadState.remove(pKey);
+			return false;
 		}
 		cur._isSleeping = true;
+		cur._threadState.put(pKey, 2);
+		boolean timeout = true;
 		if (pMillis == -1) {
 			try {
 				while (true)
-					Thread.sleep(Long.MAX_VALUE);
+					Thread.sleep(Long.MAX_VALUE); // TODO change
 			} catch (InterruptedException e) {
-				cur.takeCoffee();
-				return false;
+				timeout = false;
 			}
 		}
 		else {
 			try {
-				Thread.sleep(pMillis);
+				Thread.sleep(pMillis); // TODO change
 			} catch (InterruptedException e) {
-				cur.takeCoffee();
-				return false;
+				timeout = false;
 			}
 		}
-		cur.takeCoffee();
-		return true;
+		cur._isSleeping = false;
+		cur._threadState.remove(pKey);
+		return timeout;
 	}
 
 	/**
 	 * Wakes up another thread. Gives coffee if the thread is still awake.
 	 */
 	public void wakeUp() {
-		if (_isSleeping)
-			_thr.interrupt();
-		else
-			giveCoffee();
+		wakeUp(DEFAULTKEY);
+	}
+	public void wakeUp(Object pKey) {
+		doCriticalStuff(new Runnable() {
+
+			@Override
+			public void run() {
+				if (isSleeping(pKey)) {
+					_threadState.remove(pKey);
+					_isSleeping = false;
+					_thr.interrupt(); // TODO change
+				}
+				else if(_threadState.containsKey(pKey) && _threadState.get(pKey) == 1) {
+					_threadState.put(pKey, 3);
+				}
+			}
+			
+		});
 	}
 	
 	/**
-	 * Tells wether the thread is sleeping or not.
+	 * Tells whether the thread is sleeping or not.
 	 * @return true if the thread is sleeping, else false;
 	 */
 	public boolean isSleeping() {
 		return _isSleeping;
+	}
+	public boolean isSleeping(Object pKey) {
+		Container<Boolean> c = new Container<Boolean>();
+		doCriticalStuff(new Runnable() {
+
+			@Override
+			public void run() {
+				if (_threadState.containsKey(pKey))
+					c.cont = _threadState.get(pKey) == 2;
+				else
+					c.cont = false;
+			}
+			
+		});
+		return c.cont;
+	}
+	
+	public void setTired() {
+		setTired(DEFAULTKEY);
+	}
+	public void setTired(Object pKey) {
+		doCriticalStuff(new Runnable() {
+
+			@Override
+			public void run() {
+				_threadState.put(pKey, 1);
+			}
+			
+		});
+	}
+	public boolean isTired() {
+		return isTired(DEFAULTKEY);
+	}
+	public boolean isTired(Object pKey) {
+		Container<Boolean> c = new Container<Boolean>();
+		doCriticalStuff(new Runnable() {
+
+			@Override
+			public void run() {
+				if (_threadState.containsKey(pKey))
+					c.cont = _threadState.get(pKey) == 1;
+				else
+					c.cont = false;
+			}
+			
+		});
+		return c.cont;
+	}
+	
+	public boolean hasCoffee() {
+		return hasCoffee(DEFAULTKEY);
+	}
+	public boolean hasCoffee(Object pKey) {
+		Container<Boolean> c = new Container<Boolean>();
+		doCriticalStuff(new Runnable() {
+
+			@Override
+			public void run() {
+				if (_threadState.containsKey(pKey))
+					c.cont = _threadState.get(pKey) == 3;
+				else
+					c.cont = false;
+			}
+			
+		});
+		return c.cont;
 	}
 	
 	public long getIdentifier() {
@@ -214,27 +302,6 @@ public class ManagedThread implements Runnable {
 	public void setPriority(int pPriority) {
 		_priority = pPriority;
 	}
-
-	/**
-	 * @return
-	 */
-	public boolean hasCoffee() {
-		return _hasCoffee;
-	}
-
-	/**
-	 * 
-	 */
-	public void takeCoffee() {
-		_hasCoffee = false;
-	}
-	
-	/**
-	 * 
-	 */
-	public void giveCoffee() {
-		_hasCoffee = true;
-	}
 	
 	public void killThread() {
 		Log.logError(new Exception("The thread " + toString() + " had to be killed."));
@@ -246,5 +313,9 @@ public class ManagedThread implements Runnable {
 			Log.logError(e);
 			Log.crash();
 		}
+	}
+	
+	private synchronized void doCriticalStuff(Runnable pRun) {
+		pRun.run();
 	}
 }
