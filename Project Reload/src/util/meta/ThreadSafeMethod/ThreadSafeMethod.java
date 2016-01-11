@@ -12,11 +12,15 @@ import java.util.Comparator;
 import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.Map.Entry;
 import java.util.Queue;
+import java.util.Set;
 import java.util.Stack;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeoutException;
+
+import org.omg.stub.java.rmi._Remote_Stub;
 
 import util.Container;
 import util.meta.DeadlockException;
@@ -42,6 +46,17 @@ abstract class ThreadSafeMethod {
 			
 			public FieldInfo(Field pF) {
 				_field = pF;
+			}
+			
+			public String getDescription() {
+				String s = super.toString() + "\n";
+				s += "- Contains Field: \n";
+				s += _field.toString() + "\n";
+				s += "- Registered " + _registered.size() + " ThreadInfos: \n";
+				for (ThreadInfo ti : _registered.keySet()) {
+					s += ti.toString() + " readOnly? " + _registered.get(ti) + "\n";
+				}
+				return s;
 			}
 			
 			public void registerWait(ThreadInfo pThr, boolean pReadOnly) {
@@ -233,6 +248,9 @@ abstract class ThreadSafeMethod {
 					@Override
 					public void run() {
 						if (_waiting.check(t)) {
+							for (FieldInfo fi : _waiting) {
+								_registered.put(_waiting.get(fi), _waiting.get(fi)._readOnly);
+							}
 							_thr.wakeUp(_waiting);
 							_waiting = null;
 						}
@@ -303,6 +321,20 @@ abstract class ThreadSafeMethod {
 			
 			private synchronized void criticalStuff(Runnable pRun) {
 				pRun.run();
+			}
+
+			/**
+			 * @return
+			 */
+			public String getDescription() {
+				String s = super.toString() + "\n";
+				s += "- Contains ManagedThread: \n";
+				s += _thr.toString() + "\n";
+				s += "- Registered " + _registered.size() + " FieldInfos: \n";
+				for (Field f : _registered.keySet()) {
+					s += FieldInfo.getInfo(f).toString() + " readOnly? " + _registered.get(f) + "\n";
+				}
+				return s;
 			}
 		}
 		public static final class FieldList implements Iterable<FieldInfo> {
@@ -377,6 +409,9 @@ abstract class ThreadSafeMethod {
 								if (!ThreadInfo._threadInfos.contains(ti)) {
 									System.out.println("!!! ERROR: Field " + f._name + " has an unknown thread registered: " + ti._thr.toString());
 								}
+								else if (!ti._registered.containsKey(f)) {
+									System.out.println("!!! ERROR: Field " + f._name + " has a thread registered, that doesn't register the Field back: " + ti._thr.toString());
+								}
 							}
 						}
 					}
@@ -386,6 +421,9 @@ abstract class ThreadSafeMethod {
 							for (Field f : ti._registered.keySet()) {
 								if (!FieldInfo._fieldInfos.containsKey(f)) {
 									System.out.println("!!! ERROR: Thread " + t.toString() + " has an unknown field registered: " + f._name);
+								}
+								else if (!FieldInfo._fieldInfos.get(f)._registered.containsKey(ti)) {
+									System.out.println("!!! ERROR: Thread " + t.toString() + " has a field registered, that doesn't register the thread back: " + f._name);
 								}
 							}
 						}
@@ -427,33 +465,32 @@ abstract class ThreadSafeMethod {
 							ficont.cont = fi;
 						}
 					}
-					if (!fl.isEmpty())
+					if (!fl.isEmpty()) {
 						ti.registerWait(fl);
+						fl.sort();
+						pThr.setTired(fl);
+					}
 				}
 				
 			});
 			// see whether the program can run immediately
 			if (fl.isEmpty())
 				return null;
-			fl.sort();
-			pThr.setTired(fl);
 			ficont.cont.tryNext();
-			if (pThr.isTired(fl)) {
-				int sleeptime = 0;
-				if (Instant.now().plusMillis(Integer.MAX_VALUE).isBefore(pInst))
-					sleeptime = -1;
-				else {
-					sleeptime = (int)Instant.now().until(pInst, ChronoUnit.MILLIS);
-					if (sleeptime < 0)
-						sleeptime = 0;
-				}
-				if (pThr.sleep(fl, sleeptime)) {
-					fl.setException(new TimeoutException("Thread " + pThr.toString() + " timed out after " + sleeptime + " MILLIS."));
-				}
-				else if (true) {
-					// TODO check whether a deadlock flag is set
-					// fl.setException();
-				}	
+			int sleeptime = 0;
+			if (Instant.now().plusMillis(Integer.MAX_VALUE).isBefore(pInst))
+				sleeptime = -1;
+			else {
+				sleeptime = (int)Instant.now().until(pInst, ChronoUnit.MILLIS);
+				if (sleeptime < 0)
+					sleeptime = 0;
+			}
+			if (pThr.sleep(fl, sleeptime)) {
+				fl.setException(new TimeoutException("Thread " + pThr.toString() + " timed out after " + sleeptime + " MILLIS."));
+			}
+			else if (true) {
+				// TODO check whether a deadlock flag is set
+				// fl.setException();
 			}
 			return fl;
 		}
@@ -618,11 +655,14 @@ abstract class ThreadSafeMethod {
 			if (!LockManager.FieldInfo._fieldInfos.isEmpty()) {
 				System.out.println("FieldInfos still has " + LockManager.FieldInfo._fieldInfos.size() + " elements.");
 				for (Field f : LockManager.FieldInfo._fieldInfos.keySet()) {
-					System.out.println(f._name + " readOnly? " + LockManager.FieldInfo.getInfo(f)._lastRead);
+					System.out.println(LockManager.FieldInfo.getInfo(f).getDescription());
 				}
 			}
 			if (!LockManager.ThreadInfo._threadInfos.isEmpty()) {
 				System.out.println("ThreadInfos still has " + LockManager.ThreadInfo._threadInfos.size() + " elements.");
+				for (ManagedThread t : LockManager.ThreadInfo._threadInfos.keySet()) {
+					System.out.println(LockManager.ThreadInfo.getInfo(t).getDescription());
+				}
 			}
 			System.out.println("ThreadSafeMethod end of list.");
 		}

@@ -156,32 +156,48 @@ public class ManagedThread implements Runnable {
 		return sleep(DEFAULTKEY, pMillis);
 	}
 	public boolean sleep(Object pKey, int pMillis) {
+		Container<Boolean> ret = new Container<Boolean>();
 		ManagedThread cur = currentThread();
-		if (cur._threadState.containsKey(pKey) && cur._threadState.get(pKey) == 3) {
-			cur._threadState.remove(pKey);
-			return false;
-		}
-		cur._isSleeping = true;
-		cur._threadState.put(pKey, 2);
-		boolean timeout = true;
+		doCriticalStuff(new Runnable() {
+
+			@Override
+			public void run() {
+				if (cur._threadState.containsKey(pKey) && cur._threadState.get(pKey) == 3) {
+					cur._threadState.remove(pKey);
+					ret.cont = false;
+					return;
+				}
+				cur._isSleeping = true;
+				cur._threadState.put(pKey, 2);
+				ret.cont = true;
+			}
+			
+		});
 		if (pMillis == -1) {
 			try {
-				while (true)
-					Thread.sleep(Long.MAX_VALUE); // TODO change
+				while (_isSleeping)
+					Thread.sleep(100); // TODO change
 			} catch (InterruptedException e) {
-				timeout = false;
+				ret.cont = false;
 			}
 		}
 		else {
 			try {
 				Thread.sleep(pMillis); // TODO change
 			} catch (InterruptedException e) {
-				timeout = false;
+				ret.cont = false;
 			}
 		}
-		cur._isSleeping = false;
-		cur._threadState.remove(pKey);
-		return timeout;
+		doCriticalStuff(new Runnable() {
+
+			@Override
+			public void run() {
+				cur._isSleeping = false;
+				cur._threadState.remove(pKey);
+			}
+			
+		});
+		return ret.cont;
 	}
 
 	/**

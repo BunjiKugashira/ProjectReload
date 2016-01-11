@@ -24,7 +24,7 @@ public class VoidArgsTest {
 	private int _heavyLoadSize = 100;
 	private int _heavyLoadMaxTimeout = 500;
 	private int _heavyLoadMaxSleep = 100;
-	private int _heavyLoadMaxBranching = 1;
+	private int _heavyLoadMaxBranching = 100;
 	private int _counter = 0;
 	private int _timeout = 1000;
 	boolean _success = true;
