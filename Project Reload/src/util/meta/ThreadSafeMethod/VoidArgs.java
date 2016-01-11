@@ -100,21 +100,18 @@ public abstract class VoidArgs<Arg> extends ThreadSafeMethod {
 			inst = Instant.MAX;
 		DeadlockException dexc = null;
 		TimeoutException texc = null;
-		try {
-			pre(inst);
-		} catch (DeadlockException e) {
-			dexc = e;
-		} catch (TimeoutException e) {
-			texc = e;
-		}
+			ThreadSafeMethod.LockManager.FieldList registered = pre(inst);
+			dexc = registered.getDeadlockException();
+			texc = registered.getTimeoutException();
 		RuntimeException exc = null;
-		if (texc == null && dexc == null)
+		if (texc == null && dexc == null) {
 			try {
 				run(pArg);
 			} catch (RuntimeException e) {
 				exc = e;
 			}
-		post();
+		}
+		post(registered);
 		if (texc != null)
 			throw texc;
 		if (dexc != null)

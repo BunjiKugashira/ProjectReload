@@ -27,7 +27,7 @@ import util.meta.ManagedThread;
  *
  */
 abstract class ThreadSafeMethod {
-	private static final class LockManager {
+	public static final class LockManager {
 		private static final class FieldInfo implements Comparable<FieldInfo> {
 			private static final Hashtable<Field, FieldInfo> _fieldInfos = new Hashtable<Field, FieldInfo>();
 			
@@ -98,6 +98,7 @@ abstract class ThreadSafeMethod {
 					});
 				}
 			}
+			@Override
 			public int compareTo(FieldInfo pF) {
 				return _field.compareTo(pF._field);
 			}
@@ -127,6 +128,7 @@ abstract class ThreadSafeMethod {
 								_waitingToWriteNewb.removeFirstOccurrence(pThr);
 							}
 							_registered.put(pThr, f._readOnly);
+							_lastRead = f._readOnly;
 						}
 					}
 					
@@ -363,6 +365,36 @@ abstract class ThreadSafeMethod {
 			
 		}
 		
+		public static void testIntegrity() {
+			criticalStuffStat(new Runnable() {
+
+				@Override
+				public void run() {
+					if (!FieldInfo._fieldInfos.isEmpty()) {
+						for (Field f : FieldInfo._fieldInfos.keySet()) {
+							FieldInfo fi = FieldInfo.getInfo(f);
+							for (ThreadInfo ti : fi._registered.keySet()) {
+								if (!ThreadInfo._threadInfos.contains(ti)) {
+									System.out.println("!!! ERROR: Field " + f._name + " has an unknown thread registered: " + ti._thr.toString());
+								}
+							}
+						}
+					}
+					if (!ThreadInfo._threadInfos.isEmpty()) {
+						for (ManagedThread t : ThreadInfo._threadInfos.keySet()) {
+							ThreadInfo ti = ThreadInfo.getInfo(t);
+							for (Field f : ti._registered.keySet()) {
+								if (!FieldInfo._fieldInfos.containsKey(f)) {
+									System.out.println("!!! ERROR: Thread " + t.toString() + " has an unknown field registered: " + f._name);
+								}
+							}
+						}
+					}
+				}
+				
+			});
+		}
+		
 		/**
 		 * @param pInst
 		 * @param pThr
@@ -526,9 +558,9 @@ abstract class ThreadSafeMethod {
 		}
 	}
 	
+	public static final boolean DEBUG = true;
 	protected final ThreadSafeMethod[] _subCalls;
 	protected final Field[] _vars;
-	private LockManager.FieldList _registered = null;
 	private boolean _didPre = false;
 	
 	protected ThreadSafeMethod(ThreadSafeMethod[] pSub, Field... pVars) {
@@ -552,15 +584,15 @@ abstract class ThreadSafeMethod {
 		_vars = pVars;
 	}
 	
-	protected final void pre(Instant pInst) throws DeadlockException, TimeoutException {
+	protected final LockManager.FieldList pre(Instant pInst) throws DeadlockException, TimeoutException {
 		if (_didPre)
-			return;
+			return null;
 		
-		_registered = LockManager.register(pInst, ManagedThread.currentThread(), collectFields());
-		if (_registered.getDeadlockException() != null)
-			throw _registered.getDeadlockException();
-		if (_registered.getTimeoutException() != null)
-			throw _registered.getTimeoutException();
+		LockManager.FieldList registered = LockManager.register(pInst, ManagedThread.currentThread(), collectFields());
+		if (DEBUG)
+			testIntegrity();
+		
+		return registered;
 	}
 	
 	private Field[] collectFields() {
@@ -568,26 +600,36 @@ abstract class ThreadSafeMethod {
 		return _vars;
 	}
 	
-	protected final void post() {
-		if (_registered != null)
-			LockManager.free(ManagedThread.currentThread(), _registered);
-		_registered = null;
+	protected final void post(LockManager.FieldList pRegistered) {
+		if (pRegistered != null)
+			LockManager.free(ManagedThread.currentThread(), pRegistered);
+		
+		if (DEBUG)
+			testIntegrity();
+		System.out.println("Freed " + pRegistered.length() + " Fields:");
+		for (LockManager.FieldInfo fi : pRegistered) {
+			System.out.println(fi._field._name);
+		}
 	}
 	
 	public static final boolean isEmpty() {
-		if (!LockManager.isEmpty()) {
+		if (!LockManager.isEmpty() && DEBUG) {
+			System.out.println("--- ThreadSafeMethod not empty. Beginning list of remaining stuff:");
 			if (!LockManager.FieldInfo._fieldInfos.isEmpty()) {
 				System.out.println("FieldInfos still has " + LockManager.FieldInfo._fieldInfos.size() + " elements.");
 				for (Field f : LockManager.FieldInfo._fieldInfos.keySet()) {
-					String s = f.toString() + "\n";
-					s += LockManager.FieldInfo._fieldInfos.get(f)._registered.size();
-					System.out.println(s);
+					System.out.println(f._name + " readOnly? " + LockManager.FieldInfo.getInfo(f)._lastRead);
 				}
 			}
 			if (!LockManager.ThreadInfo._threadInfos.isEmpty()) {
 				System.out.println("ThreadInfos still has " + LockManager.ThreadInfo._threadInfos.size() + " elements.");
 			}
+			System.out.println("ThreadSafeMethod end of list.");
 		}
 		return LockManager.isEmpty();
+	}
+	
+	public static void testIntegrity() {
+		LockManager.testIntegrity();
 	}
 }

@@ -21,7 +21,7 @@ import util.meta.ThreadSafeMethod.VoidArgs.Arglist;
  */
 public class VoidArgsTest {
 	private int _size = 1;
-	private int _heavyLoadSize = 2;
+	private int _heavyLoadSize = 100;
 	private int _heavyLoadMaxTimeout = 500;
 	private int _heavyLoadMaxSleep = 100;
 	private int _heavyLoadMaxBranching = 1;
@@ -230,7 +230,7 @@ public class VoidArgsTest {
 						@Override
 						protected void run(Object pArg) {
 							System.out.println("I was here");
-							ManagedThread.sleep(_timeout*2);
+							ManagedThread.currentThread().sleep(_timeout*2);
 						}
 						
 					}.start(-1, new Object());
@@ -248,7 +248,7 @@ public class VoidArgsTest {
 			}
 			
 		};
-		ManagedThread.sleep(_timeout);
+		ManagedThread.currentThread().sleep(_timeout);
 		_success = false;
 		try {
 			varg.start(_timeout, new Object());
@@ -296,6 +296,7 @@ public class VoidArgsTest {
 				protected void run(Integer pArg) {
 					ManagedThread t = ManagedThread.currentThread();
 					System.out.println(t.toString() + " registered " + f.toString() + ".");
+					// assertFalse(ThreadSafeMethod.isEmpty());
 					// TODO remember that this thread owns the field
 					
 					assertTrue(ManagedThread.currentThread().sleep((int)Math.round(Math.random() * _heavyLoadMaxSleep))); // This is to simulate the thread doing something
@@ -338,7 +339,7 @@ public class VoidArgsTest {
 			t.start(0);
 		}
 		for (ManagedThread t : threads) {
-			t.join();
+			assertTrue(t.join());
 		}
 		assertTrue(VoidArgs.isEmpty());
 	}
