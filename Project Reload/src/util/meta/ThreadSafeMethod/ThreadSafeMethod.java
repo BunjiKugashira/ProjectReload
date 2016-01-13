@@ -19,12 +19,12 @@ import java.util.Stack;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.locks.LockSupport;
 
 import org.omg.stub.java.rmi._Remote_Stub;
 
 import util.Container;
 import util.meta.DeadlockException;
-import util.meta.ManagedThread;
 
 /**
  * @author Alexander
@@ -216,15 +216,15 @@ abstract class ThreadSafeMethod {
 			}
 		}
 		private static final class ThreadInfo {
-			private static final Hashtable<ManagedThread, ThreadInfo> _threadInfos = new Hashtable<ManagedThread, ThreadInfo>();
+			private static final Hashtable<Thread, ThreadInfo> _threadInfos = new Hashtable<Thread, ThreadInfo>();
 
 			private final Hashtable<Field, Boolean> _registered = new Hashtable<Field, Boolean>();
-			private final ManagedThread _thr;
+			private final Thread _thr;
 			
 			private FieldList _waiting = null;
 			private boolean _deadLockChecked = false;
 			
-			public ThreadInfo(ManagedThread pThr) {
+			public ThreadInfo(Thread pThr) {
 				_thr = pThr;
 			}
 			
@@ -251,8 +251,13 @@ abstract class ThreadSafeMethod {
 							for (FieldInfo fi : _waiting) {
 								_registered.put(_waiting.get(fi), _waiting.get(fi)._readOnly);
 							}
-							_thr.wakeUp(_waiting);
+							System.out.println("Testing " + _waiting.toString());
+							while (_waiting.getDeadlockException() != null && _waiting.getTimeoutException() != null && !Thread.currentThread().equals(_thr) && LockSupport.getBlocker(_thr) != _waiting) {
+								LockSupport.parkNanos(CATCHUP_TIME);
+							}
+							System.out.println("Unparking " + _waiting.toString());
 							_waiting = null;
+							LockSupport.unpark(_thr);
 						}
 						else if (!_deadLockChecked) {
 							_deadLockChecked = true;
@@ -302,7 +307,7 @@ abstract class ThreadSafeMethod {
 				});
 			}
 			
-			public static ThreadInfo getInfo(ManagedThread pF) {
+			public static ThreadInfo getInfo(Thread pF) {
 				Container<ThreadInfo> c = new Container<ThreadInfo>();
 				criticalStuffStat(new Runnable() {
 
@@ -397,6 +402,8 @@ abstract class ThreadSafeMethod {
 			
 		}
 		
+		public static int CATCHUP_TIME = 10000000;
+		
 		public static void testIntegrity() {
 			criticalStuffStat(new Runnable() {
 
@@ -416,7 +423,7 @@ abstract class ThreadSafeMethod {
 						}
 					}
 					if (!ThreadInfo._threadInfos.isEmpty()) {
-						for (ManagedThread t : ThreadInfo._threadInfos.keySet()) {
+						for (Thread t : ThreadInfo._threadInfos.keySet()) {
 							ThreadInfo ti = ThreadInfo.getInfo(t);
 							for (Field f : ti._registered.keySet()) {
 								if (!FieldInfo._fieldInfos.containsKey(f)) {
@@ -441,7 +448,7 @@ abstract class ThreadSafeMethod {
 		 * @throws DeadlockException 
 		 * @throws TimeoutException 
 		 */
-		public static FieldList register(Instant pInst, ManagedThread pThr, Field[] pFields) {
+		public static FieldList register(Instant pInst, Thread pThr, Field[] pFields) {
 			// remove duplicates
 			for (int i = 0; i < pFields.length-1; i++) {
 				for (int j = i+1; j < pFields.length; j++) {
@@ -452,11 +459,11 @@ abstract class ThreadSafeMethod {
 			// register waits
 			FieldList fl = new FieldList();
 			Container<FieldInfo> ficont = new Container<FieldInfo>();
+			ThreadInfo ti = ThreadInfo.getInfo(pThr);
 			criticalStuffStat(new Runnable() {
 
 				@Override
 				public void run() {
-					ThreadInfo ti = ThreadInfo.getInfo(pThr);
 					for (Field f : pFields) {
 						FieldInfo fi = FieldInfo.getInfo(f);
 						if (!ti.hasRights(f)) {
@@ -466,9 +473,8 @@ abstract class ThreadSafeMethod {
 						}
 					}
 					if (!fl.isEmpty()) {
-						ti.registerWait(fl);
 						fl.sort();
-						pThr.setTired(fl);
+						ti.registerWait(fl);
 					}
 				}
 				
@@ -477,15 +483,19 @@ abstract class ThreadSafeMethod {
 			if (fl.isEmpty())
 				return null;
 			ficont.cont.tryNext();
-			int sleeptime = 0;
-			if (Instant.now().plusMillis(Integer.MAX_VALUE).isBefore(pInst))
+			long sleeptime = 0;
+			if (Instant.now().plusNanos(Long.MAX_VALUE).isBefore(pInst))
 				sleeptime = -1;
-			else {
-				sleeptime = (int)Instant.now().until(pInst, ChronoUnit.MILLIS);
-				if (sleeptime < 0)
-					sleeptime = 0;
+			else
+				sleeptime = Math.max(Instant.now().until(pInst, ChronoUnit.NANOS), 0);
+			while (ti.isWaiting() && Instant.now().isBefore(pInst)) {
+				System.out.println("Parking " + fl.toString());
+				if (sleeptime == -1)
+					LockSupport.park(fl);
+				else
+					LockSupport.parkNanos(fl, Math.max(Instant.now().until(pInst, ChronoUnit.NANOS), 0));
 			}
-			if (pThr.sleep(fl, sleeptime)) {
+			if (ti.isWaiting()) {
 				fl.setException(new TimeoutException("Thread " + pThr.toString() + " timed out after " + sleeptime + " MILLIS."));
 			}
 			else if (true) {
@@ -499,7 +509,7 @@ abstract class ThreadSafeMethod {
 		 * @param pThr
 		 * @param pFields
 		 */
-		public static void free(ManagedThread pThr, FieldList pFields) {
+		public static void free(Thread pThr, FieldList pFields) {
 			criticalStuffStat(new Runnable() {
 
 				@Override
@@ -625,7 +635,7 @@ abstract class ThreadSafeMethod {
 		if (_didPre)
 			return null;
 		
-		LockManager.FieldList registered = LockManager.register(pInst, ManagedThread.currentThread(), collectFields());
+		LockManager.FieldList registered = LockManager.register(pInst, Thread.currentThread(), collectFields());
 		if (DEBUG)
 			testIntegrity();
 		
@@ -639,7 +649,7 @@ abstract class ThreadSafeMethod {
 	
 	protected final void post(LockManager.FieldList pRegistered) {
 		if (pRegistered != null)
-			LockManager.free(ManagedThread.currentThread(), pRegistered);
+			LockManager.free(Thread.currentThread(), pRegistered);
 		
 		if (DEBUG)
 			testIntegrity();
@@ -660,7 +670,7 @@ abstract class ThreadSafeMethod {
 			}
 			if (!LockManager.ThreadInfo._threadInfos.isEmpty()) {
 				System.out.println("ThreadInfos still has " + LockManager.ThreadInfo._threadInfos.size() + " elements.");
-				for (ManagedThread t : LockManager.ThreadInfo._threadInfos.keySet()) {
+				for (Thread t : LockManager.ThreadInfo._threadInfos.keySet()) {
 					System.out.println(LockManager.ThreadInfo.getInfo(t).getDescription());
 				}
 			}

@@ -8,11 +8,11 @@ import static org.junit.Assert.*;
 import java.util.Hashtable;
 import java.util.Stack;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.locks.LockSupport;
 
 import org.junit.Test;
 
 import util.meta.DeadlockException;
-import util.meta.ManagedThread;
 import util.meta.ThreadSafeMethod.VoidArgs.Arglist;
 
 /**
@@ -58,6 +58,7 @@ public class VoidArgsTest {
 			fail(e.toString());
 		}
 		assertTrue(ThreadSafeMethod.isEmpty());
+		System.out.println("I was here!");
 		// Test stacked start
 		_counter = 0;
 		for (int i = 0; i < _size; i++)
@@ -166,7 +167,7 @@ public class VoidArgsTest {
 		System.out.println("Waiting Situation reached!");
 		_counter = 0;
 		_success = true;
-		new ManagedThread() {
+		new Thread() {
 			
 			@Override
 			public void run() {
@@ -175,7 +176,11 @@ public class VoidArgsTest {
 						
 						@Override
 						protected void run(Object pArg) {
-							ManagedThread.currentThread().sleep(_timeout*2);
+							try {
+								Thread.sleep(_timeout*2);
+							} catch (InterruptedException e) {
+								fail(e.toString());
+							}
 							assertTrue(_counter == 0);
 							_counter = 1;
 						}
@@ -186,9 +191,13 @@ public class VoidArgsTest {
 				}
 			}
 			
-		}.start(0);
-		ManagedThread.currentThread().sleep(_timeout);
-		ManagedThread[] thrs = new ManagedThread[_size];
+		}.start();
+		try {
+			Thread.sleep(_timeout);
+		} catch (InterruptedException e1) {
+			fail(e1.toString());
+		}
+		Thread[] thrs = new Thread[_size];
 		for (int i = 0; i < _size; i++) {
 			v[i] = new VoidArgs<Object>(f) {
 
@@ -199,7 +208,7 @@ public class VoidArgsTest {
 				
 			};
 			VoidArgs<Object> va = v[i];
-			thrs[i] = new ManagedThread() {
+			thrs[i] = new Thread() {
 				VoidArgs<Object> vtemp = va;
 				
 				@Override
@@ -212,15 +221,19 @@ public class VoidArgsTest {
 				}
 				
 			};
-			thrs[i].start(0);
+			thrs[i].start();
 		}
-		for (ManagedThread t : thrs) {
-			t.join();
+		for (Thread t : thrs) {
+			try {
+				t.join();
+			} catch (InterruptedException e) {
+				fail(e.toString());
+			}
 		}
 		assertTrue(ThreadSafeMethod.isEmpty());
 		// Test timeout
 		
-		new ManagedThread() {
+		new Thread() {
 			
 			@Override
 			public void run() {
@@ -229,8 +242,13 @@ public class VoidArgsTest {
 
 						@Override
 						protected void run(Object pArg) {
-							System.out.println("I was here");
-							ManagedThread.currentThread().sleep(_timeout*2);
+							System.out.println("Starting Block");
+							try {
+								Thread.sleep(_timeout*2);
+							} catch (InterruptedException e) {
+								fail(e.toString());
+							}
+							System.out.println("Ending Block");
 						}
 						
 					}.start(-1, new Object());
@@ -239,8 +257,8 @@ public class VoidArgsTest {
 				}
 			}
 			
-		}.start(0);
-		VoidArgs<Object> varg = new VoidArgs<Object>(f) {
+		}.start();
+		VoidArgs<Object> varg = new VoidArgs<Object>(new VoidArgs.Field(f._owner, f._name, true)) {
 
 			@Override
 			protected void run(Object pArg) {
@@ -248,7 +266,11 @@ public class VoidArgsTest {
 			}
 			
 		};
-		ManagedThread.currentThread().sleep(_timeout);
+		try {
+			Thread.sleep(_timeout);
+		} catch (InterruptedException e1) {
+			fail(e1.toString());
+		}
 		_success = false;
 		try {
 			varg.start(_timeout, new Object());
@@ -273,9 +295,9 @@ public class VoidArgsTest {
 	@Test
 	public void testHeavyLoad() {
 		VoidArgs.Field fields[] = new VoidArgs.Field[_heavyLoadSize*2];
-		Hashtable<ManagedThread, Integer>[] fieldWriting = new Hashtable[fields.length];
-		Hashtable<ManagedThread, Integer>[] fieldReading = new Hashtable[fields.length];
-		ManagedThread threads[] = new ManagedThread[_heavyLoadSize];
+		Hashtable<Thread, Integer>[] fieldWriting = new Hashtable[fields.length];
+		Hashtable<Thread, Integer>[] fieldReading = new Hashtable[fields.length];
+		Thread threads[] = new Thread[_heavyLoadSize];
 		VoidArgs<Integer> methods[] = new VoidArgs[fields.length];
 		
 		for (int i = 0; i < _heavyLoadSize; i++) {
@@ -283,23 +305,27 @@ public class VoidArgsTest {
 			fields[i + _heavyLoadSize] = new VoidArgs.Field(this, "Field" + i, true);
 		}
 		for (int i = 0; i < methods.length; i++) {
-			fieldWriting[i] = new Hashtable<ManagedThread, Integer>();
-			fieldReading[i] = new Hashtable<ManagedThread, Integer>();
+			fieldWriting[i] = new Hashtable<Thread, Integer>();
+			fieldReading[i] = new Hashtable<Thread, Integer>();
 			_counter = i;
 			
 			methods[i] = new VoidArgs<Integer>(fields[i]) {
 				Field f = fields[_counter];
-				Hashtable<ManagedThread, Integer> fw = fieldWriting[_counter];
-				Hashtable<ManagedThread, Integer> fr = fieldReading[_counter];
+				Hashtable<Thread, Integer> fw = fieldWriting[_counter];
+				Hashtable<Thread, Integer> fr = fieldReading[_counter];
 				
 				@Override
 				protected void run(Integer pArg) {
-					ManagedThread t = ManagedThread.currentThread();
+					Thread t = Thread.currentThread();
 					System.out.println(t.toString() + " registered " + f.toString() + ".");
 					// assertFalse(ThreadSafeMethod.isEmpty());
 					// TODO remember that this thread owns the field
 					
-					assertTrue(ManagedThread.currentThread().sleep((int)Math.round(Math.random() * _heavyLoadMaxSleep))); // This is to simulate the thread doing something
+					try {
+						Thread.sleep((int)Math.round(Math.random() * _heavyLoadMaxSleep));
+					} catch (InterruptedException e1) {
+						fail(e1.toString());
+					} // This is to simulate the thread doing something
 					if (pArg > _heavyLoadMaxBranching) {
 						try {
 							methods[(int)(Math.random() * methods.length)].start((int)(Math.random() * _heavyLoadMaxTimeout), pArg - 1);
@@ -309,18 +335,22 @@ public class VoidArgsTest {
 							System.out.println(t.toString() + " had to abort due to timeout.");
 						}
 					}
-					assertTrue(ManagedThread.currentThread().sleep((int)Math.round(Math.random() * _heavyLoadMaxSleep))); // This is to simulate the thread doing something
+					try {
+						Thread.sleep((int)Math.round(Math.random() * _heavyLoadMaxSleep));
+					} catch (InterruptedException e) {
+						fail(e.toString());
+					} // This is to simulate the thread doing something
 					
 					// TODO remember to free this thread's fields
 				}
 			};
 		}
 		for (int i = 0; i < threads.length; i++) {
-			threads[i] = new ManagedThread() {
+			threads[i] = new Thread() {
 				
 				@Override
 				public void run() {
-					ManagedThread t = ManagedThread.currentThread();
+					Thread t = Thread.currentThread();
 					for (int n = 0; n < _heavyLoadSize; n++) {
 						try {
 							methods[(int)(Math.random() * methods.length)].start((int)(Math.random() * _heavyLoadMaxTimeout), (int)(Math.random() * _heavyLoadMaxBranching));
@@ -335,11 +365,15 @@ public class VoidArgsTest {
 			};
 		}
 		
-		for (ManagedThread t : threads) {
-			t.start(0);
+		for (Thread t : threads) {
+			t.start();
 		}
-		for (ManagedThread t : threads) {
-			assertTrue(t.join());
+		for (Thread t : threads) {
+			try {
+				t.join();
+			} catch (InterruptedException e) {
+				fail(e.toString());
+			}
 		}
 		assertTrue(VoidArgs.isEmpty());
 	}
