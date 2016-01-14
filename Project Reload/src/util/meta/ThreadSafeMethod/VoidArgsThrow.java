@@ -20,8 +20,12 @@ import util.meta.DeadlockException;
  *            The class of the argument that the start() method should accept.
  *            If start() should accept more than one argument, use a container
  *            class.
+ * @param <Throw>
+ *            The class of the object that run() can throw and thus can be
+ *            thrown by start().
  */
-public abstract class VoidArgs<Arg> extends ThreadSafeMethod {
+public abstract class VoidArgsThrow<Arg, Throw extends Throwable> extends
+        ThreadSafeMethod {
 	/**
 	 * Objects of this class are used to represent fields.
 	 * 
@@ -73,7 +77,7 @@ public abstract class VoidArgs<Arg> extends ThreadSafeMethod {
 	 * @param pVars
 	 *            The fields that this method needs to reserve before running.
 	 */
-	protected VoidArgs(ThreadSafeMethod[] pSub, Field... pVars) {
+	protected VoidArgsThrow(ThreadSafeMethod[] pSub, Field... pVars) {
 		super(pSub, pVars);
 	}
 	
@@ -84,7 +88,7 @@ public abstract class VoidArgs<Arg> extends ThreadSafeMethod {
 	 * @param pVars
 	 *            The fields that this method needs to reserve before running.
 	 */
-	protected VoidArgs(Field... pVars) {
+	protected VoidArgsThrow(Field... pVars) {
 		super(pVars);
 	}
 	
@@ -93,8 +97,10 @@ public abstract class VoidArgs<Arg> extends ThreadSafeMethod {
 	 * 
 	 * @param pArg
 	 *            The parameter your method should accept.
+	 * @throws Throw
+	 *             Throw The object that this method can throw.
 	 */
-	protected abstract void run(Arg pArg);
+	protected abstract void run(Arg pArg) throws Throw;
 	
 	/**
 	 * The method used to execute this tread safe method. It will automatically
@@ -118,9 +124,12 @@ public abstract class VoidArgs<Arg> extends ThreadSafeMethod {
 	 * @throws TimeoutException
 	 *             Throws a TimeoutException if the desired fields are not
 	 *             available within the timeout period.
+	 * @throws Throw
+	 *             Throw Throws a Throwable object if run() throws one.
 	 */
+	@SuppressWarnings("unchecked")
 	public final void start(int pTimeout, Arg pArg) throws DeadlockException,
-	        TimeoutException {
+	        TimeoutException, Throw {
 		// Calculate the instant the wait will be considered timed out
 		Instant inst;
 		if (pTimeout > 0)
@@ -135,11 +144,14 @@ public abstract class VoidArgs<Arg> extends ThreadSafeMethod {
 		RuntimeException exc = null;
 		// If no exceptions have occurred, do what the method is supposed to do
 		// and catch anything that could possibly go wrong
+		Throw thro = null;
 		if (texc == null && dexc == null) {
 			try {
 				run(pArg);
 			} catch (RuntimeException e) {
 				exc = e;
+			} catch (Throwable t) {
+				thro = (Throw) t;
 			}
 		}
 		// Release all registered fields
@@ -149,6 +161,8 @@ public abstract class VoidArgs<Arg> extends ThreadSafeMethod {
 			throw texc;
 		if (dexc != null)
 			throw dexc;
+		if (thro != null)
+			throw thro;
 		if (exc != null)
 			throw exc;
 	}

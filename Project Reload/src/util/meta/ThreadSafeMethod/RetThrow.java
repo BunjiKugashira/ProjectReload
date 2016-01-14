@@ -16,12 +16,15 @@ import util.meta.DeadlockException;
  * threads working on the same fields.
  * 
  * @author Alexander Otto
- * @param <Arg>
- *            The class of the argument that the start() method should accept.
- *            If start() should accept more than one argument, use a container
- *            class.
+ * @param <Return>
+ *            The class of the object that the start() and run() methods should
+ *            return.
+ * @param <Throw>
+ *            The class of the object that run() can throw and thus can be
+ *            thrown by start().
  */
-public abstract class VoidArgs<Arg> extends ThreadSafeMethod {
+public abstract class RetThrow<Return, Throw extends Throwable> extends
+        ThreadSafeMethod {
 	/**
 	 * Objects of this class are used to represent fields.
 	 * 
@@ -73,7 +76,7 @@ public abstract class VoidArgs<Arg> extends ThreadSafeMethod {
 	 * @param pVars
 	 *            The fields that this method needs to reserve before running.
 	 */
-	protected VoidArgs(ThreadSafeMethod[] pSub, Field... pVars) {
+	protected RetThrow(ThreadSafeMethod[] pSub, Field... pVars) {
 		super(pSub, pVars);
 	}
 	
@@ -84,17 +87,18 @@ public abstract class VoidArgs<Arg> extends ThreadSafeMethod {
 	 * @param pVars
 	 *            The fields that this method needs to reserve before running.
 	 */
-	protected VoidArgs(Field... pVars) {
+	protected RetThrow(Field... pVars) {
 		super(pVars);
 	}
 	
 	/**
 	 * The body of this method. Use this as if you were writing a normal method.
 	 * 
-	 * @param pArg
-	 *            The parameter your method should accept.
+	 * @return The return object of your method.
+	 * @throws Throw
+	 *             The object that this method can throw.
 	 */
-	protected abstract void run(Arg pArg);
+	protected abstract Return run() throws Throw;
 	
 	/**
 	 * The method used to execute this tread safe method. It will automatically
@@ -107,8 +111,7 @@ public abstract class VoidArgs<Arg> extends ThreadSafeMethod {
 	 *            throwing a TimeoutException. Use -1 to wait infinitely. The
 	 *            method can only time out while waiting for it's fields. Once
 	 *            execution of run() has started it can no longer time out.
-	 * @param pArg
-	 *            The parameter that will be given to run(pArg)
+	 * @return The object that run() returned.
 	 * @throws DeadlockException
 	 *             Throws a DeadlockException of this thread runs into a
 	 *             deadlock with a higher or equally priorized thread. If this
@@ -118,9 +121,12 @@ public abstract class VoidArgs<Arg> extends ThreadSafeMethod {
 	 * @throws TimeoutException
 	 *             Throws a TimeoutException if the desired fields are not
 	 *             available within the timeout period.
+	 * @throws Throw
+	 *             Throws a Throwable object if run() throws one.
 	 */
-	public final void start(int pTimeout, Arg pArg) throws DeadlockException,
-	        TimeoutException {
+	@SuppressWarnings("unchecked")
+	public final Return start(int pTimeout) throws DeadlockException,
+	        TimeoutException, Throw {
 		// Calculate the instant the wait will be considered timed out
 		Instant inst;
 		if (pTimeout > 0)
@@ -135,11 +141,15 @@ public abstract class VoidArgs<Arg> extends ThreadSafeMethod {
 		RuntimeException exc = null;
 		// If no exceptions have occurred, do what the method is supposed to do
 		// and catch anything that could possibly go wrong
+		Return ret = null;
+		Throw thro = null;
 		if (texc == null && dexc == null) {
 			try {
-				run(pArg);
+				ret = run();
 			} catch (RuntimeException e) {
 				exc = e;
+			} catch (Throwable t) {
+				thro = (Throw) t;
 			}
 		}
 		// Release all registered fields
@@ -149,7 +159,10 @@ public abstract class VoidArgs<Arg> extends ThreadSafeMethod {
 			throw texc;
 		if (dexc != null)
 			throw dexc;
+		if (thro != null)
+			throw thro;
 		if (exc != null)
 			throw exc;
+		return ret;
 	}
 }

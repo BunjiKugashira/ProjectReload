@@ -16,12 +16,8 @@ import util.meta.DeadlockException;
  * threads working on the same fields.
  * 
  * @author Alexander Otto
- * @param <Arg>
- *            The class of the argument that the start() method should accept.
- *            If start() should accept more than one argument, use a container
- *            class.
  */
-public abstract class VoidArgs<Arg> extends ThreadSafeMethod {
+public abstract class Void extends ThreadSafeMethod {
 	/**
 	 * Objects of this class are used to represent fields.
 	 * 
@@ -73,7 +69,7 @@ public abstract class VoidArgs<Arg> extends ThreadSafeMethod {
 	 * @param pVars
 	 *            The fields that this method needs to reserve before running.
 	 */
-	protected VoidArgs(ThreadSafeMethod[] pSub, Field... pVars) {
+	protected Void(ThreadSafeMethod[] pSub, Field... pVars) {
 		super(pSub, pVars);
 	}
 	
@@ -84,17 +80,14 @@ public abstract class VoidArgs<Arg> extends ThreadSafeMethod {
 	 * @param pVars
 	 *            The fields that this method needs to reserve before running.
 	 */
-	protected VoidArgs(Field... pVars) {
+	protected Void(Field... pVars) {
 		super(pVars);
 	}
 	
 	/**
 	 * The body of this method. Use this as if you were writing a normal method.
-	 * 
-	 * @param pArg
-	 *            The parameter your method should accept.
 	 */
-	protected abstract void run(Arg pArg);
+	protected abstract void run();
 	
 	/**
 	 * The method used to execute this tread safe method. It will automatically
@@ -107,8 +100,6 @@ public abstract class VoidArgs<Arg> extends ThreadSafeMethod {
 	 *            throwing a TimeoutException. Use -1 to wait infinitely. The
 	 *            method can only time out while waiting for it's fields. Once
 	 *            execution of run() has started it can no longer time out.
-	 * @param pArg
-	 *            The parameter that will be given to run(pArg)
 	 * @throws DeadlockException
 	 *             Throws a DeadlockException of this thread runs into a
 	 *             deadlock with a higher or equally priorized thread. If this
@@ -119,7 +110,7 @@ public abstract class VoidArgs<Arg> extends ThreadSafeMethod {
 	 *             Throws a TimeoutException if the desired fields are not
 	 *             available within the timeout period.
 	 */
-	public final void start(int pTimeout, Arg pArg) throws DeadlockException,
+	public final void start(int pTimeout) throws DeadlockException,
 	        TimeoutException {
 		// Calculate the instant the wait will be considered timed out
 		Instant inst;
@@ -137,7 +128,7 @@ public abstract class VoidArgs<Arg> extends ThreadSafeMethod {
 		// and catch anything that could possibly go wrong
 		if (texc == null && dexc == null) {
 			try {
-				run(pArg);
+				run();
 			} catch (RuntimeException e) {
 				exc = e;
 			}

@@ -6,14 +6,10 @@ package util.meta.ThreadSafeMethod;
 import static org.junit.Assert.*;
 
 import java.util.Hashtable;
-import java.util.Stack;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.locks.LockSupport;
-
 import org.junit.Test;
 
 import util.meta.DeadlockException;
-import util.meta.ThreadSafeMethod.VoidArgs.Arglist;
 
 /**
  * @author Alexander
@@ -21,9 +17,9 @@ import util.meta.ThreadSafeMethod.VoidArgs.Arglist;
  */
 public class VoidArgsTest {
 	private int _size = 1;
-	private int _heavyLoadSize = 100;
+	private int _heavyLoadSize = 200;
 	private int _heavyLoadMaxTimeout = 500;
-	private int _heavyLoadMaxSleep = 100;
+	private int _heavyLoadMaxSleep = 50;
 	private int _heavyLoadMaxBranching = 100;
 	private int _counter = 0;
 	private int _timeout = 1000;
