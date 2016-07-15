@@ -4,9 +4,11 @@
 package modularity.events.errors;
 
 import java.io.IOException;
+import java.util.concurrent.TimeoutException;
 
-import error.Log;
 import modularity.events.Event;
+import util.meta.DeadlockException;
+import error.Log;
 
 /**
  * @author Alexander
@@ -32,12 +34,18 @@ public class IOErrorEvent extends Event<IOException> {
 	}
 
 	protected void registerEventspecificReactions() {
-		EVENT.registerReaction("ErrorEvent.throwException", 2, EVENT.new Reaction() {
+		try {
+			EVENT.registerReaction.start("ErrorEvent.throwException", 2,
+					EVENT.new Reaction() {
 
-			@Override
-			public void react(final IOException pExc) {
-				Log.logError(pExc);
-			}
-		});
+						@Override
+						public void react(final IOException pExc) {
+							Log.logError(pExc);
+						}
+					});
+		} catch (DeadlockException | TimeoutException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 }

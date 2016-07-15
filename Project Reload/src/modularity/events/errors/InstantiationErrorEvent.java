@@ -3,9 +3,10 @@
  */
 package modularity.events.errors;
 
-import java.lang.InstantiationException;
+import java.util.concurrent.TimeoutException;
 
 import modularity.events.Event;
+import util.meta.DeadlockException;
 import error.Log;
 
 /**
@@ -32,12 +33,18 @@ public class InstantiationErrorEvent extends Event<InstantiationException> {
 	}
 
 	protected void registerEventspecificReactions() {
-		EVENT.registerReaction("ErrorEvent.throwException", 2, EVENT.new Reaction() {
+		try {
+			EVENT.registerReaction.start("ErrorEvent.throwException", 2,
+					EVENT.new Reaction() {
 
-			@Override
-			public void react(final InstantiationException pExc) {
-				Log.logError(pExc);
-			}
-		});
+						@Override
+						public void react(final InstantiationException pExc) {
+							Log.logError(pExc);
+						}
+					});
+		} catch (DeadlockException | TimeoutException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 }
