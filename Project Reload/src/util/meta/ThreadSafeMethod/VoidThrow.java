@@ -21,7 +21,7 @@ import util.meta.DeadlockException;
  *            thrown by start().
  */
 public abstract class VoidThrow<Throw extends Throwable> extends
-        ThreadSafeMethod {
+		ThreadSafeMethod {
 	/**
 	 * Objects of this class are used to represent fields.
 	 * 
@@ -42,7 +42,7 @@ public abstract class VoidThrow<Throw extends Throwable> extends
 		public Field(Object pOwner, String pName) {
 			super(pOwner, pName);
 		}
-		
+
 		/**
 		 * Constructor of the class Field. The field's identity consists of the
 		 * object that's holding it and it's name.
@@ -62,7 +62,7 @@ public abstract class VoidThrow<Throw extends Throwable> extends
 			super(pOwner, pName, pReadOnly);
 		}
 	}
-	
+
 	/**
 	 * Constructor of this class. When calling the constructor all fields that
 	 * need to be reserved must be in pVars.
@@ -76,7 +76,7 @@ public abstract class VoidThrow<Throw extends Throwable> extends
 	protected VoidThrow(ThreadSafeMethod[] pSub, Field... pVars) {
 		super(pSub, pVars);
 	}
-	
+
 	/**
 	 * Constructor of this class. When calling the constructor all fields that
 	 * need to be reserved must be in pVars.
@@ -87,7 +87,7 @@ public abstract class VoidThrow<Throw extends Throwable> extends
 	protected VoidThrow(Field... pVars) {
 		super(pVars);
 	}
-	
+
 	/**
 	 * The body of this method. Use this as if you were writing a normal method.
 	 * 
@@ -95,7 +95,7 @@ public abstract class VoidThrow<Throw extends Throwable> extends
 	 *             Throw The object that this method can throw.
 	 */
 	protected abstract void run() throws Throw;
-	
+
 	/**
 	 * The method used to execute this tread safe method. It will automatically
 	 * reserve all fields, call run() and release the fields again. This method
@@ -121,7 +121,7 @@ public abstract class VoidThrow<Throw extends Throwable> extends
 	 */
 	@SuppressWarnings("unchecked")
 	public final void start(int pTimeout) throws DeadlockException,
-	        TimeoutException, Throw {
+			TimeoutException, Throw {
 		// Calculate the instant the wait will be considered timed out
 		Instant inst;
 		if (pTimeout > 0)
@@ -157,5 +157,9 @@ public abstract class VoidThrow<Throw extends Throwable> extends
 			throw thro;
 		if (exc != null)
 			throw exc;
+	}
+
+	public final void start() throws DeadlockException, TimeoutException, Throw {
+		start(-1);
 	}
 }

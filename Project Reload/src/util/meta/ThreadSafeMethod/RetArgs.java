@@ -45,7 +45,7 @@ public abstract class RetArgs<Return, Arg> extends ThreadSafeMethod {
 		public Field(Object pOwner, String pName) {
 			super(pOwner, pName);
 		}
-		
+
 		/**
 		 * Constructor of the class Field. The field's identity consists of the
 		 * object that's holding it and it's name.
@@ -65,7 +65,7 @@ public abstract class RetArgs<Return, Arg> extends ThreadSafeMethod {
 			super(pOwner, pName, pReadOnly);
 		}
 	}
-	
+
 	/**
 	 * Constructor of this class. When calling the constructor all fields that
 	 * need to be reserved must be in pVars.
@@ -79,7 +79,7 @@ public abstract class RetArgs<Return, Arg> extends ThreadSafeMethod {
 	protected RetArgs(ThreadSafeMethod[] pSub, Field... pVars) {
 		super(pSub, pVars);
 	}
-	
+
 	/**
 	 * Constructor of this class. When calling the constructor all fields that
 	 * need to be reserved must be in pVars.
@@ -90,7 +90,7 @@ public abstract class RetArgs<Return, Arg> extends ThreadSafeMethod {
 	protected RetArgs(Field... pVars) {
 		super(pVars);
 	}
-	
+
 	/**
 	 * The body of this method. Use this as if you were writing a normal method.
 	 * 
@@ -99,7 +99,7 @@ public abstract class RetArgs<Return, Arg> extends ThreadSafeMethod {
 	 * @return The return object of your method.
 	 */
 	protected abstract Return run(Arg pArg);
-	
+
 	/**
 	 * The method used to execute this tread safe method. It will automatically
 	 * reserve all fields, call run() and release the fields again. This method
@@ -125,7 +125,7 @@ public abstract class RetArgs<Return, Arg> extends ThreadSafeMethod {
 	 *             available within the timeout period.
 	 */
 	public final Return start(int pTimeout, Arg pArg) throws DeadlockException,
-	        TimeoutException {
+			TimeoutException {
 		// Calculate the instant the wait will be considered timed out
 		Instant inst;
 		if (pTimeout > 0)
@@ -135,8 +135,12 @@ public abstract class RetArgs<Return, Arg> extends ThreadSafeMethod {
 		// Register the fields
 		ThreadSafeMethod.FieldList registered = pre(inst);
 		// Check if any exceptions have occurred
-		DeadlockException dexc = registered.getDeadlockException();
-		TimeoutException texc = registered.getTimeoutException();
+		DeadlockException dexc = null;
+		TimeoutException texc = null;
+		if (registered != null) {
+			dexc = registered.getDeadlockException();
+			texc = registered.getTimeoutException();
+		}
 		RuntimeException exc = null;
 		// If no exceptions have occurred, do what the method is supposed to do
 		// and catch anything that could possibly go wrong
@@ -158,5 +162,10 @@ public abstract class RetArgs<Return, Arg> extends ThreadSafeMethod {
 		if (exc != null)
 			throw exc;
 		return ret;
+	}
+
+	public final Return start(Arg pArg) throws DeadlockException,
+			TimeoutException {
+		return start(-1, pArg);
 	}
 }

@@ -28,7 +28,7 @@ import util.meta.DeadlockException;
  *            thrown by start().
  */
 public abstract class RetArgsThrow<Return, Arg, Throw extends Throwable>
-        extends ThreadSafeMethod {
+		extends ThreadSafeMethod {
 	/**
 	 * Objects of this class are used to represent fields.
 	 * 
@@ -49,7 +49,7 @@ public abstract class RetArgsThrow<Return, Arg, Throw extends Throwable>
 		public Field(Object pOwner, String pName) {
 			super(pOwner, pName);
 		}
-		
+
 		/**
 		 * Constructor of the class Field. The field's identity consists of the
 		 * object that's holding it and it's name.
@@ -69,7 +69,7 @@ public abstract class RetArgsThrow<Return, Arg, Throw extends Throwable>
 			super(pOwner, pName, pReadOnly);
 		}
 	}
-	
+
 	/**
 	 * Constructor of this class. When calling the constructor all fields that
 	 * need to be reserved must be in pVars.
@@ -83,7 +83,7 @@ public abstract class RetArgsThrow<Return, Arg, Throw extends Throwable>
 	protected RetArgsThrow(ThreadSafeMethod[] pSub, Field... pVars) {
 		super(pSub, pVars);
 	}
-	
+
 	/**
 	 * Constructor of this class. When calling the constructor all fields that
 	 * need to be reserved must be in pVars.
@@ -94,7 +94,7 @@ public abstract class RetArgsThrow<Return, Arg, Throw extends Throwable>
 	protected RetArgsThrow(Field... pVars) {
 		super(pVars);
 	}
-	
+
 	/**
 	 * The body of this method. Use this as if you were writing a normal method.
 	 * 
@@ -105,7 +105,7 @@ public abstract class RetArgsThrow<Return, Arg, Throw extends Throwable>
 	 *             The object that this method can throw.
 	 */
 	protected abstract Return run(Arg pArg) throws Throw;
-	
+
 	/**
 	 * The method used to execute this tread safe method. It will automatically
 	 * reserve all fields, call run() and release the fields again. This method
@@ -134,7 +134,7 @@ public abstract class RetArgsThrow<Return, Arg, Throw extends Throwable>
 	 */
 	@SuppressWarnings("unchecked")
 	public final Return start(int pTimeout, Arg pArg) throws DeadlockException,
-	        TimeoutException, Throw {
+			TimeoutException, Throw {
 		// Calculate the instant the wait will be considered timed out
 		Instant inst;
 		if (pTimeout > 0)
@@ -172,5 +172,10 @@ public abstract class RetArgsThrow<Return, Arg, Throw extends Throwable>
 		if (exc != null)
 			throw exc;
 		return ret;
+	}
+
+	public final Return start(Arg pArg) throws DeadlockException,
+			TimeoutException, Throw {
+		return start(-1, pArg);
 	}
 }

@@ -38,7 +38,7 @@ public abstract class Void extends ThreadSafeMethod {
 		public Field(Object pOwner, String pName) {
 			super(pOwner, pName);
 		}
-		
+
 		/**
 		 * Constructor of the class Field. The field's identity consists of the
 		 * object that's holding it and it's name.
@@ -58,7 +58,7 @@ public abstract class Void extends ThreadSafeMethod {
 			super(pOwner, pName, pReadOnly);
 		}
 	}
-	
+
 	/**
 	 * Constructor of this class. When calling the constructor all fields that
 	 * need to be reserved must be in pVars.
@@ -72,7 +72,7 @@ public abstract class Void extends ThreadSafeMethod {
 	protected Void(ThreadSafeMethod[] pSub, Field... pVars) {
 		super(pSub, pVars);
 	}
-	
+
 	/**
 	 * Constructor of this class. When calling the constructor all fields that
 	 * need to be reserved must be in pVars.
@@ -83,12 +83,12 @@ public abstract class Void extends ThreadSafeMethod {
 	protected Void(Field... pVars) {
 		super(pVars);
 	}
-	
+
 	/**
 	 * The body of this method. Use this as if you were writing a normal method.
 	 */
 	protected abstract void run();
-	
+
 	/**
 	 * The method used to execute this tread safe method. It will automatically
 	 * reserve all fields, call run() and release the fields again. This method
@@ -111,7 +111,7 @@ public abstract class Void extends ThreadSafeMethod {
 	 *             available within the timeout period.
 	 */
 	public final void start(int pTimeout) throws DeadlockException,
-	        TimeoutException {
+			TimeoutException {
 		// Calculate the instant the wait will be considered timed out
 		Instant inst;
 		if (pTimeout > 0)
@@ -142,5 +142,9 @@ public abstract class Void extends ThreadSafeMethod {
 			throw dexc;
 		if (exc != null)
 			throw exc;
+	}
+
+	public final void start() throws DeadlockException, TimeoutException {
+		start(-1);
 	}
 }

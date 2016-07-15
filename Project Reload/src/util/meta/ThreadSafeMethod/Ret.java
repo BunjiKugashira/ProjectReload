@@ -41,7 +41,7 @@ public abstract class Ret<Return> extends ThreadSafeMethod {
 		public Field(Object pOwner, String pName) {
 			super(pOwner, pName);
 		}
-		
+
 		/**
 		 * Constructor of the class Field. The field's identity consists of the
 		 * object that's holding it and it's name.
@@ -61,7 +61,7 @@ public abstract class Ret<Return> extends ThreadSafeMethod {
 			super(pOwner, pName, pReadOnly);
 		}
 	}
-	
+
 	/**
 	 * Constructor of this class. When calling the constructor all fields that
 	 * need to be reserved must be in pVars.
@@ -75,7 +75,7 @@ public abstract class Ret<Return> extends ThreadSafeMethod {
 	protected Ret(ThreadSafeMethod[] pSub, Field... pVars) {
 		super(pSub, pVars);
 	}
-	
+
 	/**
 	 * Constructor of this class. When calling the constructor all fields that
 	 * need to be reserved must be in pVars.
@@ -86,14 +86,14 @@ public abstract class Ret<Return> extends ThreadSafeMethod {
 	protected Ret(Field... pVars) {
 		super(pVars);
 	}
-	
+
 	/**
 	 * The body of this method. Use this as if you were writing a normal method.
 	 * 
 	 * @return The return object of your method.
 	 */
 	protected abstract Return run();
-	
+
 	/**
 	 * The method used to execute this tread safe method. It will automatically
 	 * reserve all fields, call run() and release the fields again. This method
@@ -117,7 +117,7 @@ public abstract class Ret<Return> extends ThreadSafeMethod {
 	 *             available within the timeout period.
 	 */
 	public final Return start(int pTimeout) throws DeadlockException,
-	        TimeoutException {
+			TimeoutException {
 		// Calculate the instant the wait will be considered timed out
 		Instant inst;
 		if (pTimeout > 0)
@@ -150,5 +150,9 @@ public abstract class Ret<Return> extends ThreadSafeMethod {
 		if (exc != null)
 			throw exc;
 		return ret;
+	}
+
+	public final Return start() throws DeadlockException, TimeoutException {
+		return start(-1);
 	}
 }
